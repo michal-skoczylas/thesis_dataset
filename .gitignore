@@ -1,0 +1,6 @@
+data/raw/*
+data/processed/*
+!data/raw/.gitignore
+!data/processed/.gitignore
+.DS_Store
+__pycache__/
