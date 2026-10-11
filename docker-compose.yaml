@@ -57,6 +57,8 @@ services:
     depends_on:
       - postgres
       - airflow-init
+    volumes:
+      - ./data:/opt/airflow/data
 
   label-studio:
     image: heartexlabs/label-studio:latest
@@ -64,7 +66,9 @@ services:
       - "8081:8080"
     environment:
       - LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true
-      - LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=/label-studio/data/project_data
+      - LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=/opt/data
+    volumes:
+      - ./data:/opt/data
 
 volumes:
   postgres-db-volume:
