@@ -6,3 +6,4 @@ data/processed/*
 __pycache__/
 keys/*
 logs/*
+*.zip

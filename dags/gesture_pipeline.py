@@ -31,6 +31,10 @@ with DAG(
         task_id='run_grounding_dino_detection',
         bash_command='docker run --rm --volumes-from dane-airflow-scheduler-1 model-ml python /opt/airflow/scripts/detect_hands.py'
     )
+    import_to_label_studio = BashOperator(
+        task_id = 'import_to_label_studio',
+        bash_command='docker run --rm --network dane_default --volumes-from dane-airflow-scheduler-1 model-ml python /opt/airflow/scripts/import_to_ls.py',    
+    )
 
     # Zdefiniowanie kolejności wykonywania zadań
-    pull_data >> process_images
+    pull_data >> process_images>>import_to_label_studio

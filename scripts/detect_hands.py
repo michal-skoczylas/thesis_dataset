@@ -33,4 +33,7 @@ if __name__ == "__main__":
         extension=".png",
         output_folder=output_dir,
     )
+    # Na końcu skryptu Grounding DINO
+    with open("/opt/airflow/data/labeled/classes.txt", "w") as f:
+        f.write("hand\n")
     print(f"Finished labeling, results saved in {output_dir}")
