@@ -1,0 +1,62 @@
+version: '3.8'
+
+x-airflow-common: &airflow-common
+  restart: always
+  build:
+    context: .
+    dockerfile: docker/Dockerfile.airflow
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'True'
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./data:/opt/airflow/data
+    - ./scripts:/opt/airflow/scripts
+    - ./logs:/opt/airflow/logs
+    - ./.dvc:/opt/airflow/.dvc
+    - ./.git:/opt/airflow/.git
+    - ./keys:/opt/airflow/keys
+    # Pozwala Airflow wewnątrz kontenera na uruchamianie innych kontenerów (np. z modelem ML)
+    - /var/run/docker.sock:/var/run/docker.sock
+  depends_on:
+    - postgres
+
+services:
+  postgres:
+    image: postgres:13
+    restart: always
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+
+  airflow-init:
+    <<: *airflow-common
+    restart: "no"
+    command: >
+      bash -c "airflow db migrate && airflow users create --username admin --password admin --firstname Admin --lastname Admin --role Admin --email admin@example.com"
+    environment:
+      <<: *airflow-common-env
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - airflow-init
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    depends_on:
+      - postgres
+      - airflow-init
+
+volumes:
+  postgres-db-volume:
