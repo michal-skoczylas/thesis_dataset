@@ -1,0 +1,6 @@
+outs:
+- md5: 6e648935767e0a2c4e6121b9b61f3506.dir
+  size: 4336026
+  nfiles: 552
+  hash: md5
+  path: labeled
