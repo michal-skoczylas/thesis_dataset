@@ -18,7 +18,9 @@ x-airflow-common: &airflow-common
     - ./.dvc:/opt/airflow/.dvc
     - ./.git:/opt/airflow/.git
     - ./keys:/opt/airflow/keys
-    # Pozwala Airflow wewnątrz kontenera na uruchamianie innych kontenerów (np. z modelem ML)
+    # Baza Label Studio – tylko do odczytu, żeby skrypt mógł wyciągnąć token
+    - label-studio-data:/opt/airflow/ls_data:ro
+    # Pozwala Airflow wewnątrz kontenera uruchamiać inne kontenery
     - /var/run/docker.sock:/var/run/docker.sock
   depends_on:
     - postgres
@@ -57,19 +59,25 @@ services:
     depends_on:
       - postgres
       - airflow-init
-    volumes:
-      - ./data:/opt/airflow/data
+    # UWAGA: żadnego `volumes:` tutaj!
+    # Wolumeny dziedziczą się z x-airflow-common (łącznie z docker.sock i ls_data)
 
   label-studio:
     image: heartexlabs/label-studio:latest
+    restart: always
     ports:
       - "8081:8080"
     environment:
       - LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true
       - LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=/opt/data
+      - LABEL_STUDIO_SECRET_KEY=UVGyySmYSA_2X2h9FOsyC57R8NB8N-LHVc16qJFnMdbR_PsrZF8nLbOU72hDFzrjHu_DNNSIGjrDiR5z0_F3uw
+    #      - LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK=true
     volumes:
+      # Trwała baza + ustawienia organizacji (Legacy tokens itd.)
+      - label-studio-data:/label-studio/data
+      # Obrazy + etykiety YOLO
       - ./data:/opt/data
 
 volumes:
   postgres-db-volume:
-  label_studio_data:
+  label-studio-data:
