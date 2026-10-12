@@ -1,39 +1,63 @@
 import os
+import argparse
+from pathlib import Path
+import numpy as np
 from autodistill_grounding_dino import GroundingDINO
 from autodistill.detection import CaptionOntology
-import numpy as np
+
+from config import RAW_DIR, LABELED_DIR
 
 
-class OneHandGroundingDino(GroundingDINO):
-    def predict(self,input):
-        detections = super().predict(input)
-        
-        if len(detections)<=2:
+class MaxHandsGroundingDino(GroundingDINO):
+    def __init__(self, ontology, max_detections=2):
+        super().__init__(ontology=ontology)
+        self.max_detections = max_detections
+
+    def predict(self, input_image):
+        detections = super().predict(input_image)
+        if len(detections) <= self.max_detections:
             return detections
-        
-        best_indices = np.argsort(detections.confidence)[-2:][::-1]
+        best_indices = np.argsort(detections.confidence)[-self.max_detections:][::-1]
         return detections[best_indices]
-    
-    
-if __name__ == "__main__":
-    ontology = CaptionOntology({
-        "hand" : "hand"
-    })
-    print("Loading Grounding DINO...")
-    base_model = OneHandGroundingDino(ontology=ontology)
-    
-    input_dir = "/opt/airflow/data/raw"
-    output_dir = "/opt/airflow/data/labeled"
-    
-    os.makedirs(output_dir, exist_ok=True)
-    
-    print(f"Starting detection in dir: {input_dir}")
+
+
+def run_detection(input_dir: Path, output_dir: Path, max_hands: int = 2, extension: str = ".png", target_class: str = "hand"):
+    input_dir = Path(input_dir)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    ontology = CaptionOntology({target_class: target_class})
+    print(f"Ładowanie modelu Grounding DINO (maksymalnie {max_hands} detekcji na kadr)...")
+    base_model = MaxHandsGroundingDino(ontology=ontology, max_detections=max_hands)
+
+    print(f"Rozpoczęcie detekcji w: {input_dir}")
     dataset = base_model.label(
-        input_folder=input_dir,
-        extension=".png",
-        output_folder=output_dir,
+        input_folder=str(input_dir),
+        extension=extension,
+        output_folder=str(output_dir),
     )
-    # Na końcu skryptu Grounding DINO
-    with open("/opt/airflow/data/labeled/classes.txt", "w") as f:
-        f.write("hand\n")
-    print(f"Finished labeling, results saved in {output_dir}")
+
+    classes_file = output_dir / "classes.txt"
+    with open(classes_file, "w", encoding="utf-8") as f:
+        f.write(f"{target_class}\n")
+
+    print(f"Zakończono pre-etykietowanie! Wyniki zapisano w: {output_dir}")
+    return dataset
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Detekcja rąk za pomocą Grounding DINO")
+    parser.add_argument("--input-dir", type=str, default=str(RAW_DIR), help="Katalog wejściowy ze zdjęciami")
+    parser.add_argument("--output-dir", type=str, default=str(LABELED_DIR), help="Katalog wyjściowy na adnotacje YOLO")
+    parser.add_argument("--max-hands", type=int, default=2, help="Maksymalna liczba rąk na obraz")
+    parser.add_argument("--extension", type=str, default=".png", help="Rozszerzenie przeszukiwanych plików")
+    parser.add_argument("--class-name", type=str, default="hand", help="Nazwa klasy")
+    args = parser.parse_args()
+
+    run_detection(
+        input_dir=Path(args.input_dir),
+        output_dir=Path(args.output_dir),
+        max_hands=args.max_hands,
+        extension=args.extension,
+        target_class=args.class_name
+    )

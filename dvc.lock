@@ -1,0 +1,55 @@
+schema: '2.0'
+stages:
+  detect:
+    cmd: python3 scripts/run_detect.py --max-hands 2 --extension .png 
+      --class-name hand
+    deps:
+    - path: data/raw
+      hash: md5
+      md5: 37e34081d9815e4b9e9e7f778e67e3b8.dir
+      size: 8525456
+      nfiles: 137
+    - path: scripts/detect_hands.py
+      hash: md5
+      md5: f3241e9ed33e61597b0696246e54189f
+      size: 2505
+    - path: scripts/run_detect.py
+      hash: md5
+      md5: 86bb3dde02669713a8e7d4b3a6183518
+      size: 1110
+    params:
+      params.yaml:
+        detect.extension: .png
+        detect.max_hands: 2
+        detect.target_class: hand
+    outs:
+    - path: data/labeled
+      hash: md5
+      md5: 6e648935767e0a2c4e6121b9b61f3506.dir
+      size: 4336026
+      nfiles: 552
+  crop:
+    cmd: python3 scripts/process_annotations.py --crop-only --padding 0
+    deps:
+    - path: data/annotations/dataset.json
+      hash: md5
+      md5: 703e04e1e2d45eaa23a12ee3eb979db8
+      size: 7329
+    - path: data/labeled
+      hash: md5
+      md5: 6e648935767e0a2c4e6121b9b61f3506.dir
+      size: 4336026
+      nfiles: 552
+    - path: scripts/process_annotations.py
+      hash: md5
+      md5: 6072934f12b23875cb60da322e5c16dc
+      size: 5073
+    params:
+      params.yaml:
+        crop.padding: 0
+    outs:
+    - path: data/processed
+      hash: md5
+      md5: 956302d47d3d6c4ea2308e265602ec0e.dir
+      size: 4996
+      nfiles: 6

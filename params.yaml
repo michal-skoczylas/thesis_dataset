@@ -1,0 +1,7 @@
+detect:
+  max_hands: 2
+  extension: ".png"
+  target_class: "hand"
+
+crop:
+  padding: 0

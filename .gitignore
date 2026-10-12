@@ -1,9 +1,29 @@
+# DVC managed data
 data/raw/*
+data/labeled/*
 data/processed/*
 !data/raw/.gitignore
+!data/labeled/.gitignore
 !data/processed/.gitignore
+
+# System & IDE
 .DS_Store
+.idea/
+.vscode/
+
+# Python
 __pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# Secrets & Environment
+.env
+.env.local
 keys/*
+
+# Logs & temp
 logs/*
 *.zip
+*.log

@@ -1,0 +1,13 @@
+# Podstawowe zaleznosci potoku danych i komunikacji z API
+dvc>=3.50.0
+dvc-gdrive>=3.0.0
+requests>=2.28.0
+opencv-python-headless>=4.8.0
+numpy>=1.24.0
+
+# Opcjonalne (wymagane tylko jesli uruchamiasz model ML bez Dockera):
+# torch>=2.0.0
+# torchvision>=0.15.0
+# autodistill>=0.1.28
+# autodistill-grounding-dino>=0.1.7
+# transformers==4.38.2

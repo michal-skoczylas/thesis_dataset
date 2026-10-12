@@ -1,83 +1,17 @@
-version: '3.8'
-
-x-airflow-common: &airflow-common
-  restart: always
-  build:
-    context: .
-    dockerfile: docker/Dockerfile.airflow
-  environment: &airflow-common-env
-    AIRFLOW__CORE__EXECUTOR: LocalExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
-    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'True'
-  volumes:
-    - ./dags:/opt/airflow/dags
-    - ./data:/opt/airflow/data
-    - ./scripts:/opt/airflow/scripts
-    - ./logs:/opt/airflow/logs
-    - ./.dvc:/opt/airflow/.dvc
-    - ./.git:/opt/airflow/.git
-    - ./keys:/opt/airflow/keys
-    # Baza Label Studio – tylko do odczytu, żeby skrypt mógł wyciągnąć token
-    - label-studio-data:/opt/airflow/ls_data:ro
-    # Pozwala Airflow wewnątrz kontenera uruchamiać inne kontenery
-    - /var/run/docker.sock:/var/run/docker.sock
-  depends_on:
-    - postgres
-
 services:
-  postgres:
-    image: postgres:13
-    restart: always
-    environment:
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
-      POSTGRES_DB: airflow
-    volumes:
-      - postgres-db-volume:/var/lib/postgresql/data
-
-  airflow-init:
-    <<: *airflow-common
-    restart: "no"
-    command: >
-      bash -c "airflow db migrate && airflow users create --username admin --password admin --firstname Admin --lastname Admin --role Admin --email admin@example.com"
-    environment:
-      <<: *airflow-common-env
-
-  airflow-webserver:
-    <<: *airflow-common
-    command: webserver
-    ports:
-      - "8080:8080"
-    depends_on:
-      - postgres
-      - airflow-init
-
-  airflow-scheduler:
-    <<: *airflow-common
-    command: scheduler
-    depends_on:
-      - postgres
-      - airflow-init
-    # UWAGA: żadnego `volumes:` tutaj!
-    # Wolumeny dziedziczą się z x-airflow-common (łącznie z docker.sock i ls_data)
-
   label-studio:
     image: heartexlabs/label-studio:latest
-    restart: always
+    container_name: label-studio
+    restart: unless-stopped
     ports:
-      - "8081:8080"
+      - "${LABEL_STUDIO_PORT:-8081}:8080"
     environment:
       - LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true
       - LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=/opt/data
-      - LABEL_STUDIO_SECRET_KEY=UVGyySmYSA_2X2h9FOsyC57R8NB8N-LHVc16qJFnMdbR_PsrZF8nLbOU72hDFzrjHu_DNNSIGjrDiR5z0_F3uw
-    #      - LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK=true
+      - LABEL_STUDIO_SECRET_KEY=${LABEL_STUDIO_SECRET_KEY:-UVGyySmYSA_2X2h9FOsyC57R8NB8N-LHVc16qJFnMdbR_PsrZF8nLbOU72hDFzrjHu_DNNSIGjrDiR5z0_F3uw}
     volumes:
-      # Trwała baza + ustawienia organizacji (Legacy tokens itd.)
       - label-studio-data:/label-studio/data
-      # Obrazy + etykiety YOLO
       - ./data:/opt/data
 
 volumes:
-  postgres-db-volume:
   label-studio-data:
