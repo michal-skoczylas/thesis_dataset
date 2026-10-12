@@ -36,5 +36,10 @@ with DAG(
         bash_command='docker run --rm --network dane_default --volumes-from dane-airflow-scheduler-1 model-ml python /opt/airflow/scripts/import_to_ls.py',    
     )
 
+    export_and_crop = BashOperator(
+    task_id='export_and_crop',
+    bash_command='python /opt/airflow/scripts/process_annotations.py',
+    dag=dag,
+    )
     # Zdefiniowanie kolejności wykonywania zadań
-    pull_data >> process_images>>import_to_label_studio
+    pull_data >> process_images>>import_to_label_studio>>export_and_crop
