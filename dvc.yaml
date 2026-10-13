@@ -1,13 +1,12 @@
 stages:
   detect:
-    cmd: python3 scripts/run_detect.py --max-hands ${detect.max_hands} --extension ${detect.extension} --class-name ${detect.target_class}
+    cmd: python3 scripts/run_detect.py --max-hands ${detect.max_hands} --class-name ${detect.target_class}
     deps:
       - scripts/detect_hands.py
       - scripts/run_detect.py
       - data/raw
     params:
       - detect.max_hands
-      - detect.extension
       - detect.target_class
     outs:
       - data/labeled

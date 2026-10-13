@@ -111,15 +111,27 @@ def import_dataset(labeled_dir: Path = LABELED_DIR, project_id: int = PROJECT_ID
             task["predictions"] = [{"result": results}]
         tasks.append(task)
 
-    if not tasks:
-        print("Brak zadań do zaimportowania.")
+    # Pobierz listę już istniejących zadań w projekcie Label Studio (zapobieganie duplikatom)
+    existing_tasks_resp = requests.get(f"{LABEL_STUDIO_URL}/api/projects/{project_id}/tasks?page_size=10000", headers=headers)
+    existing_urls = set()
+    if existing_tasks_resp.status_code == 200:
+        existing_data = existing_tasks_resp.json()
+        if isinstance(existing_data, list):
+            existing_urls = {t.get("data", {}).get("image") for t in existing_data if "data" in t}
+
+    new_tasks = [t for t in tasks if t.get("data", {}).get("image") not in existing_urls]
+
+    print(f"Stan Label Studio: {len(existing_urls)} już zaimportowanych zadań, {len(new_tasks)} nowych do wgrania.")
+
+    if not new_tasks:
+        print("✅ Wszystkie zadania znajdują się już w Label Studio! Brak nowych danych do wgrania.")
         return
 
     import_url = f"{LABEL_STUDIO_URL}/api/projects/{project_id}/import"
-    print(f"Wysyłanie {len(tasks)} zadań do projektu {project_id}...")
-    resp = requests.post(import_url, headers=headers, json=tasks)
+    print(f"Wysyłanie {len(new_tasks)} nowych zadań do projektu {project_id}...")
+    resp = requests.post(import_url, headers=headers, json=new_tasks)
     resp.raise_for_status()
-    print("=== Pomyślnie zaimportowano zadania do Label Studio! ===")
+    print("=== Pomyślnie zaimportowano nowe zadania do Label Studio! ===")
 
 
 if __name__ == "__main__":

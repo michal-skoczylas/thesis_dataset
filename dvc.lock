@@ -1,33 +1,31 @@
 schema: '2.0'
 stages:
   detect:
-    cmd: python3 scripts/run_detect.py --max-hands 2 --extension .png 
-      --class-name hand
+    cmd: python3 scripts/run_detect.py --max-hands 2 --class-name hand
     deps:
     - path: data/raw
       hash: md5
-      md5: 37e34081d9815e4b9e9e7f778e67e3b8.dir
-      size: 8525456
-      nfiles: 137
+      md5: 2bab34b61db788159c16fda03fc18396.dir
+      size: 8554489
+      nfiles: 138
     - path: scripts/detect_hands.py
       hash: md5
-      md5: f3241e9ed33e61597b0696246e54189f
-      size: 2505
+      md5: 7d03c6263d49b569da64951d9e5926e9
+      size: 5741
     - path: scripts/run_detect.py
       hash: md5
-      md5: 86bb3dde02669713a8e7d4b3a6183518
-      size: 1110
+      md5: 426afbadbf7f63b36af7a1d3936d901e
+      size: 2339
     params:
       params.yaml:
-        detect.extension: .png
         detect.max_hands: 2
         detect.target_class: hand
     outs:
     - path: data/labeled
       hash: md5
-      md5: 6e648935767e0a2c4e6121b9b61f3506.dir
-      size: 4336026
-      nfiles: 552
+      md5: c36b8626f113b6c4d5bfe327d4d45c90.dir
+      size: 5634667
+      nfiles: 278
   crop:
     cmd: python3 scripts/process_annotations.py --crop-only --padding 0
     deps:
