@@ -5,9 +5,9 @@ stages:
     deps:
     - path: data/raw
       hash: md5
-      md5: 3faf01bd0dc2de75220cc1ec79a37f19.dir
-      size: 8577039
-      nfiles: 139
+      md5: 3b79995d5fa9c6a203a0572eb46cc00b.dir
+      size: 8599299
+      nfiles: 140
     - path: scripts/detect_hands.py
       hash: md5
       md5: 7d03c6263d49b569da64951d9e5926e9
@@ -23,21 +23,21 @@ stages:
     outs:
     - path: data/labeled
       hash: md5
-      md5: d2319e459611d72aa61d444069b94d6b.dir
-      size: 5657947
-      nfiles: 280
+      md5: d25b26235ff0dcb52672e4a5d99ed494.dir
+      size: 5680950
+      nfiles: 282
   crop:
     cmd: python3 scripts/process_annotations.py --crop-only --padding 0
     deps:
     - path: data/annotations/dataset.json
       hash: md5
-      md5: 703e04e1e2d45eaa23a12ee3eb979db8
-      size: 7329
+      md5: cf1a10e93db3ac3d57cf5c7fa0302793
+      size: 1857
     - path: data/labeled
       hash: md5
-      md5: d2319e459611d72aa61d444069b94d6b.dir
-      size: 5657947
-      nfiles: 280
+      md5: d25b26235ff0dcb52672e4a5d99ed494.dir
+      size: 5680950
+      nfiles: 282
     - path: scripts/process_annotations.py
       hash: md5
       md5: 6072934f12b23875cb60da322e5c16dc
@@ -48,6 +48,6 @@ stages:
     outs:
     - path: data/processed
       hash: md5
-      md5: 956302d47d3d6c4ea2308e265602ec0e.dir
-      size: 4996
-      nfiles: 6
+      md5: 13dd7de5444de0fc565217de350c45de.dir
+      size: 5742
+      nfiles: 7
