@@ -1,5 +1,6 @@
 import os
 import json
+import csv
 import argparse
 from pathlib import Path
 import requests
@@ -37,8 +38,38 @@ def export_annotations_from_ls(project_id: int = PROJECT_ID, output_file: Path =
     return tasks
 
 
+def extract_metadata_from_stem(stem: str):
+    """
+    Wyciąga gest, odległość i sesję czasową z identyfikatora klatki.
+    Format z podkatalogów: <odleglosc>_<nazwagestu>_<timedate>_<orig_filename>
+    Przykład: 2m_OpenHand_2026-10-15_143000_DJI_0001
+    """
+    parts = stem.split("_")
+    distance = "unknown"
+    gesture = "unknown"
+    session = "unknown"
+
+    # Wykrywanie struktury odległość/nazwagestu/timedate
+    if len(parts) >= 3 and any(p.endswith("m") or p.isdigit() for p in parts[:2]):
+        distance = parts[0]
+        gesture = parts[1]
+        session = parts[2]
+    else:
+        # Fallback na poszukiwanie znanych słów kluczowych gestów
+        for known in ["OpenHand", "ClosedHand", "Pointing", "ThumbsUp", "Peace", "Fist"]:
+            if known.lower() in stem.lower():
+                gesture = known
+                break
+        for p in parts:
+            if (p.endswith("m") and p[:-1].isdigit()) or p.isdigit():
+                distance = p
+                break
+
+    return gesture, distance, session
+
+
 def generate_crops_from_annotations(json_path: Path = None, output_dir: Path = PROCESSED_DIR, padding: int = 0) -> int:
-    """Wczytuje dataset.json i wycina obszary dłoni za pomocą OpenCV do katalogu processed."""
+    """Wczytuje dataset.json i wycina obszary dłoni do podkatalogów gestów w data/processed."""
     if json_path is None:
         json_path = ANNOTATIONS_DIR / "dataset.json"
 
@@ -53,18 +84,17 @@ def generate_crops_from_annotations(json_path: Path = None, output_dir: Path = P
 
     print(f"Generowanie cropów dla {len(tasks)} wpisów z {json_path}...")
     crops_count = 0
+    metadata_rows = []
 
     for task in tasks:
         img_url = task.get("data", {}).get("image", "")
         if not img_url:
             continue
 
-        # Wyciągnięcie relatywnej ścieżki (np. labeled/valid/images/00480.jpg)
         rel_img_path = img_url.split("?d=")[-1]
         abs_img_path = DATA_DIR / rel_img_path
 
         if not abs_img_path.exists():
-            # Fallback wyszukiwania pliku w całym DATA_DIR jeśli struktura podkatalogów uległa zmianie
             found = list(DATA_DIR.rglob(abs_img_path.name))
             if found:
                 abs_img_path = found[0]
@@ -75,6 +105,13 @@ def generate_crops_from_annotations(json_path: Path = None, output_dir: Path = P
         if img is None:
             continue
         h_img, w_img = img.shape[:2]
+
+        base_name = abs_img_path.stem
+        gesture, distance, session = extract_metadata_from_stem(base_name)
+
+        # Folder docelowy dla danego gestu (np. data/processed/OpenHand/)
+        gesture_dir = output_dir / gesture
+        gesture_dir.mkdir(parents=True, exist_ok=True)
 
         for annotation in task.get("annotations", []):
             for result in annotation.get("result", []):
@@ -94,15 +131,35 @@ def generate_crops_from_annotations(json_path: Path = None, output_dir: Path = P
 
                 crop_img = img[y1:y2, x1:x2]
                 if crop_img.size != 0:
-                    base_name = abs_img_path.stem
                     box_id = result.get("id", "0")
                     crop_filename = f"{base_name}_{box_id}.jpg"
-                    crop_path = output_dir / crop_filename
+                    crop_path = gesture_dir / crop_filename
 
                     cv2.imwrite(str(crop_path), crop_img)
                     crops_count += 1
 
-    print(f"Zakończono! Zapisano {crops_count} wyciętych dłoni w: {output_dir}")
+                    metadata_rows.append({
+                        "crop_filename": crop_filename,
+                        "gesture": gesture,
+                        "distance": distance,
+                        "session": session,
+                        "source_image": abs_img_path.name,
+                        "box_id": box_id,
+                        "x1": x1, "y1": y1, "x2": x2, "y2": y2,
+                        "box_width": w, "box_height": h
+                    })
+
+    # Zapis metadanych do CSV (świetna baza pod analizy i wykresy do pracy inżynierskiej)
+    if metadata_rows:
+        csv_path = ANNOTATIONS_DIR / "crops_metadata.csv"
+        fieldnames = ["crop_filename", "gesture", "distance", "session", "source_image", "box_id", "x1", "y1", "x2", "y2", "box_width", "box_height"]
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(metadata_rows)
+        print(f"Zapisano metadane cropów (odległości, gesty) do: {csv_path}")
+
+    print(f"Zakończono! Zapisano {crops_count} wyciętych dłoni pogrupowanych w: {output_dir}")
     return crops_count
 
 

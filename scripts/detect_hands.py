@@ -36,6 +36,24 @@ def filter_top_detections(detections, max_detections=2):
     return detections[best_indices]
 
 
+def get_unique_stem(img_path: Path, raw_dir: Path) -> str:
+    """
+    Tworzy unikalną nazwę pliku uwzględniającą strukturę podkatalogów (np. odległość, gest, data).
+    Przykład:
+      data/raw/2m/OpenHand/2026-10-15_143000/DJI_0001.jpg
+      -> 2m_OpenHand_2026-10-15_143000_DJI_0001
+      data/raw/00000.png -> 00000
+    """
+    try:
+        rel = img_path.relative_to(raw_dir)
+        if len(rel.parts) > 1:
+            clean_subdirs = [p.replace(" ", "_") for p in rel.parts[:-1]]
+            return f"{'_'.join(clean_subdirs)}_{img_path.stem}"
+    except ValueError:
+        pass
+    return img_path.stem
+
+
 def run_detection(
     input_dir: Path = RAW_DIR,
     output_dir: Path = LABELED_DIR,
@@ -51,9 +69,12 @@ def run_detection(
     train_images_dir.mkdir(parents=True, exist_ok=True)
     train_labels_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Znajdź wszystkie zdjęcia w katalogu wejściowym
+    # 1. Rekurencyjne wyszukiwanie wszystkich zdjęć w katalogu wejściowym i podkatalogach
     valid_exts = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
-    all_raw_images = [p for p in sorted(input_dir.iterdir()) if p.suffix.lower() in valid_exts]
+    all_raw_images = [
+        p for p in sorted(input_dir.rglob("*"))
+        if p.is_file() and p.suffix.lower() in valid_exts
+    ]
 
     # 2. Sprawdź, które obrazy już zostały przetworzone (mają etykietę .txt)
     existing_stems = {p.stem for p in output_dir.rglob("*.txt") if p.name != "classes.txt"}
@@ -62,7 +83,10 @@ def run_detection(
         images_to_process = all_raw_images
         print(f"[Tryb: Wymuszony] Przetwarzanie wszystkich {len(images_to_process)} obrazów...")
     else:
-        images_to_process = [p for p in all_raw_images if p.stem not in existing_stems]
+        images_to_process = [
+            p for p in all_raw_images
+            if get_unique_stem(p, input_dir) not in existing_stems
+        ]
 
     print(f"[Dataset] Łącznie w raw: {len(all_raw_images)}, już oznaczonych: {len(existing_stems)}, nowych do przetworzenia: {len(images_to_process)}")
 
@@ -83,10 +107,11 @@ def run_detection(
 
     # 5. Przetwarzanie tylko nowych obrazów
     for idx, img_path in enumerate(images_to_process, 1):
-        print(f"[{idx}/{len(images_to_process)}] Analiza klatki: {img_path.name}...")
+        unique_stem = get_unique_stem(img_path, input_dir)
+        print(f"[{idx}/{len(images_to_process)}] Analiza klatki: {img_path.name} (identyfikator: {unique_stem})...")
         img = cv2.imread(str(img_path))
         if img is None:
-            print(f"  [Błąd] Nie można wczytać obrazu {img_path.name}, pomijam.")
+            print(f"  [Błąd] Nie można wczytać obrazu {img_path}, pomijam.")
             continue
 
         h_img, w_img = img.shape[:2]
@@ -107,12 +132,12 @@ def run_detection(
                 yolo_lines.append(f"0 {cx:.6f} {cy:.6f} {bw:.6f} {bh:.6f}\n")
 
         # Zapis pliku etykiety
-        out_txt_path = train_labels_dir / f"{img_path.stem}.txt"
+        out_txt_path = train_labels_dir / f"{unique_stem}.txt"
         with open(out_txt_path, "w", encoding="utf-8") as f:
             f.writelines(yolo_lines)
 
         # Kopiowanie/zapis obrazu do train/images
-        out_img_path = train_images_dir / f"{img_path.stem}.jpg"
+        out_img_path = train_images_dir / f"{unique_stem}.jpg"
         cv2.imwrite(str(out_img_path), img)
 
     # 6. Zapis klas i metadanych YOLO

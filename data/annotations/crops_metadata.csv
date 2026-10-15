@@ -1,0 +1,2 @@
+crop_filename,gesture,distance,session,source_image,box_id,x1,y1,x2,y2,box_width,box_height
+00015_0.jpg,unknown,00015,unknown,00015.jpg,0,295,185,307,204,12,19
