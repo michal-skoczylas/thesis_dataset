@@ -68,8 +68,8 @@ def extract_metadata_from_stem(stem: str):
     return gesture, distance, session
 
 
-def generate_crops_from_annotations(json_path: Path = None, output_dir: Path = PROCESSED_DIR, padding: int = 0) -> int:
-    """Wczytuje dataset.json i wycina obszary dłoni do podkatalogów gestów w data/processed."""
+def generate_crops_from_annotations(json_path: Path = None, output_dir: Path = PROCESSED_DIR, images_dir: Path = None, padding: int = 0) -> int:
+    """Wczytuje dataset.json i wycina obszary dłoni do podkatalogów gestów w output_dir."""
     if json_path is None:
         json_path = ANNOTATIONS_DIR / "dataset.json"
 
@@ -93,6 +93,17 @@ def generate_crops_from_annotations(json_path: Path = None, output_dir: Path = P
 
         rel_img_path = img_url.split("?d=")[-1]
         abs_img_path = DATA_DIR / rel_img_path
+
+        # Jeśli podano dedykowany katalog obrazów (np. data/raw_upscaled), szukaj najpierw w nim
+        if images_dir:
+            images_dir_path = Path(images_dir)
+            cand = images_dir_path / abs_img_path.name
+            if cand.exists():
+                abs_img_path = cand
+            else:
+                found = list(images_dir_path.rglob(abs_img_path.name))
+                if found:
+                    abs_img_path = found[0]
 
         if not abs_img_path.exists():
             found = list(DATA_DIR.rglob(abs_img_path.name))
@@ -170,16 +181,18 @@ if __name__ == "__main__":
     parser.add_argument("--project-id", type=int, default=PROJECT_ID, help="ID projektu Label Studio")
     parser.add_argument("--json-file", type=str, default=str(ANNOTATIONS_DIR / "dataset.json"), help="Ścieżka do dataset.json")
     parser.add_argument("--output-dir", type=str, default=str(PROCESSED_DIR), help="Katalog wyjściowy cropów")
+    parser.add_argument("--images-dir", type=str, default=None, help="Opcjonalny katalog źródeł obrazów (np. data/raw_upscaled)")
     parser.add_argument("--padding", type=int, default=0, help="Dodatkowy margines w pikselach dla cropa")
     args = parser.parse_args()
 
     json_file = Path(args.json_file)
     output_dir = Path(args.output_dir)
+    images_dir = Path(args.images_dir) if args.images_dir else None
 
     if args.export_only:
         export_annotations_from_ls(project_id=args.project_id, output_file=json_file)
     elif args.crop_only:
-        generate_crops_from_annotations(json_path=json_file, output_dir=output_dir, padding=args.padding)
+        generate_crops_from_annotations(json_path=json_file, output_dir=output_dir, images_dir=images_dir, padding=args.padding)
     else:
         export_annotations_from_ls(project_id=args.project_id, output_file=json_file)
-        generate_crops_from_annotations(json_path=json_file, output_dir=output_dir, padding=args.padding)
+        generate_crops_from_annotations(json_path=json_file, output_dir=output_dir, images_dir=images_dir, padding=args.padding)

@@ -4,3 +4,7 @@ detect:
 
 crop:
   padding: 0
+
+upscale:
+  scale: 4
+  device: "auto"

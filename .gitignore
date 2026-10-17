@@ -1,10 +1,19 @@
 # DVC managed data
 data/raw/*
+data/raw_upscaled/*
 data/labeled/*
+data/labeled_upscaled/*
 data/processed/*
+data/processed_upscaled/*
 !data/raw/.gitignore
+!data/raw_upscaled/.gitignore
 !data/labeled/.gitignore
+!data/labeled_upscaled/.gitignore
 !data/processed/.gitignore
+!data/processed_upscaled/.gitignore
+weights/*
+!weights/.gitignore
+
 
 # System & IDE
 .DS_Store

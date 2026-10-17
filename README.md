@@ -31,24 +31,33 @@ Label Studio będzie dostępne pod adresem: [http://localhost:8081](http://local
 
 ---
 
-## 🔄 Przepływ pracy (Pipeline)
+## 🔄 Przepływ pracy (Dwa warianty potoku)
 
-Proces przygotowania danych dzieli się na 4 proste kroki:
+System wspiera dwa równoległe potoki badawcze (idealne do porównania w pracy inżynierskiej):
 
+### 1. Wariant STANDARDOWY (Baseline - bez upscalingu)
 ```
-[data/raw] (zdjęcia z drona)
+[data/raw] (zdjęcia 320x320)
      │
-     ▼  make detect (lub dvc repro detect)
+     ▼  make detect (lub make pipeline-standard)
 [data/labeled] (predykcje bounding boxów rąk z Grounding DINO)
      │
-     ▼  make import-ls
-[Label Studio UI] (weryfikacja / poprawianie ramek przez człowieka)
+     ▼  make crop
+[data/processed] (wycięte dłonie z oryginalnych zdjęć)
+```
+
+### 2. Wariant AI (Super-Resolution - Real-ESRGAN Compact x4)
+```
+[data/raw] (zdjęcia 320x320)
      │
-     ▼  make export-ls
-[data/annotations/dataset.json] (zatwierdzone ramki, śledzone w Git)
+     ▼  make upscale (lub make pipeline-upscaled)
+[data/raw_upscaled] (wysoka rozdzielczość 1280x1280, MPS / Metal)
      │
-     ▼  make crop (lub dvc repro crop)
-[data/processed] (wycięte dłonie pod trening klasyfikatora gestów)
+     ▼  make detect-upscaled
+[data/labeled_upscaled] (detekcja na ostrych klatkach)
+     │
+     ▼  make crop-upscaled
+[data/processed_upscaled] (wycięte dłonie w wysokiej rozdzielczości)
 ```
 
 ---
@@ -60,16 +69,17 @@ Wszystkie operacje wykonasz jednym poleceniem:
 | Polecenie | Opis |
 |-----------|------|
 | `make help` | Wyświetla listę wszystkich dostępnych poleceń |
-| `make ls-up` | Uruchamia Label Studio w Dockerze (lekki kontener, port 8081) |
+| `make pipeline-standard` | Uruchamia pełny potok standardowy (`detect` $\to$ `crop`) |
+| `make pipeline-upscaled` | Uruchamia pełny potok AI (`upscale` $\to$ `detect_upscaled` $\to$ `crop_upscaled`) |
+| `make pipeline-all` | Przelicza oba potoki równolegle w DVC |
+| `make upscale-benchmark` | Szybki test FPS i czasu inferencji upscalingu na Apple Silicon |
+| `make ls-up` | Uruchamia Label Studio w Dockerze (port 8081) |
 | `make ls-down` | Zatrzymuje Label Studio |
-| `make pull` | Pobiera najnowszy zbiór danych z Google Drive (`dvc pull`) |
-| `make push` | Wysyła wygenerowane dane na Google Drive (`dvc push`) |
-| `make detect` | Uruchamia etap detekcji rąk modelem Grounding DINO |
 | `make import-ls` | Importuje wykryte ramki i zdjęcia do Label Studio |
 | `make export-ls` | Pobiera zatwierdzone przez człowieka adnotacje do JSON |
-| `make crop` | Wytłacza i zapisuje wycięte dłonie w `data/processed` |
-| `make pipeline` | Uruchamia pełny potok DVC (`dvc repro`) |
-| `make status` | Pokazuje status potoku oraz danych DVC |
+| `make pull` | Pobiera najnowszy zbiór danych z Google Drive (`dvc pull`) |
+| `make push` | Wysyła wygenerowane dane na Google Drive (`dvc push`) |
+| `make status` | Pokazuje status potoków oraz danych DVC |
 
 ---
 

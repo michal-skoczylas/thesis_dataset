@@ -23,9 +23,13 @@ raw_data_dir = os.getenv("DATA_DIR", "data")
 DATA_DIR = (BASE_DIR / raw_data_dir).resolve() if not Path(raw_data_dir).is_absolute() else Path(raw_data_dir)
 
 RAW_DIR = DATA_DIR / "raw"
+RAW_UPSCALED_DIR = DATA_DIR / "raw_upscaled"
 LABELED_DIR = DATA_DIR / "labeled"
+LABELED_UPSCALED_DIR = DATA_DIR / "labeled_upscaled"
 ANNOTATIONS_DIR = DATA_DIR / "annotations"
 PROCESSED_DIR = DATA_DIR / "processed"
+PROCESSED_UPSCALED_DIR = DATA_DIR / "processed_upscaled"
+WEIGHTS_DIR = BASE_DIR / "weights"
 
 # Konfiguracja Label Studio
 LABEL_STUDIO_URL = os.getenv("LABEL_STUDIO_URL", "http://localhost:8081").rstrip("/")

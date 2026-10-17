@@ -1,6 +1,9 @@
 stages:
+  # ==========================================================
+  # WARIANT 1: POTOK STANDARDOWY (BEZ UPSCALINGU - BASELINE)
+  # ==========================================================
   detect:
-    cmd: python3 scripts/run_detect.py --max-hands ${detect.max_hands} --class-name ${detect.target_class}
+    cmd: python3 scripts/run_detect.py --input-dir data/raw --output-dir data/labeled --max-hands ${detect.max_hands} --class-name ${detect.target_class}
     deps:
       - scripts/detect_hands.py
       - scripts/run_detect.py
@@ -13,7 +16,7 @@ stages:
           persist: true
 
   crop:
-    cmd: python3 scripts/process_annotations.py --crop-only --padding ${crop.padding}
+    cmd: python3 scripts/process_annotations.py --crop-only --padding ${crop.padding} --output-dir data/processed
     deps:
       - scripts/process_annotations.py
       - data/annotations/dataset.json
@@ -22,4 +25,44 @@ stages:
       - crop.padding
     outs:
       - data/processed:
+          persist: true
+
+  # ==========================================================
+  # WARIANT 2: POTOK Z UPSCALINGIEM AI (SUPER-RESOLUTION)
+  # ==========================================================
+  upscale:
+    cmd: python3 scripts/upscale_images.py --input data/raw --output data/raw_upscaled --scale ${upscale.scale} --device ${upscale.device}
+    deps:
+      - scripts/upscale_images.py
+      - data/raw
+    params:
+      - upscale.scale
+      - upscale.device
+    outs:
+      - data/raw_upscaled:
+          persist: true
+
+  detect_upscaled:
+    cmd: python3 scripts/run_detect.py --input-dir data/raw_upscaled --output-dir data/labeled_upscaled --max-hands ${detect.max_hands} --class-name ${detect.target_class}
+    deps:
+      - scripts/detect_hands.py
+      - scripts/run_detect.py
+      - data/raw_upscaled
+    params:
+      - detect.max_hands
+      - detect.target_class
+    outs:
+      - data/labeled_upscaled:
+          persist: true
+
+  crop_upscaled:
+    cmd: python3 scripts/process_annotations.py --crop-only --images-dir data/raw_upscaled --padding ${crop.padding} --output-dir data/processed_upscaled
+    deps:
+      - scripts/process_annotations.py
+      - data/annotations/dataset.json
+      - data/labeled_upscaled
+    params:
+      - crop.padding
+    outs:
+      - data/processed_upscaled:
           persist: true
