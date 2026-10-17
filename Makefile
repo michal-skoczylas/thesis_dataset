@@ -36,9 +36,13 @@ help:
 	@echo "  make pipeline-all       - Przelicza oba potoki naraz (DVC repro)"
 	@echo "  make status             - Sprawdza stan potoku i plikow DVC"
 	@echo ""
-	@echo "Wersjonowanie i synchronizacja (Google Drive):"
 	@echo "  make pull               - Pobiera dane z chmury (dvc pull)"
 	@echo "  make push               - Wysyla dane na Google Drive (dvc push)"
+	@echo ""
+	@echo "Trening YOLO (Etap 1 - Detektor Dloni):"
+	@echo "  make prepare-yolo       - Dzieli dane na train/val (GroupSplit po sesjach)"
+	@echo "  make prepare-yolo-zip   - Przygotowuje dane i pakuje do yolo_dataset.zip (pod Colab)"
+	@echo "  make train-yolo         - Rozpoczyna trening YOLO Nano (auto: CUDA/MPS/CPU)"
 	@echo "======================================================================"
 
 setup:
@@ -113,3 +117,13 @@ pipeline:
 
 status:
 	dvc status
+
+# --- Trening YOLO (Etap 1: Detektor dłoni) ---
+prepare-yolo:
+	python3 scripts/prepare_yolo_dataset.py $(if $(SOURCE),--source $(SOURCE),) $(if $(SPLIT),--split-strategy $(SPLIT),) $(if $(RATIO),--val-ratio $(RATIO),)
+
+prepare-yolo-zip:
+	python3 scripts/prepare_yolo_dataset.py --zip $(if $(SOURCE),--source $(SOURCE),) $(if $(SPLIT),--split-strategy $(SPLIT),) $(if $(RATIO),--val-ratio $(RATIO),)
+
+train-yolo:
+	python3 scripts/train_yolo.py $(if $(MODEL),--model $(MODEL),) $(if $(EPOCHS),--epochs $(EPOCHS),) $(if $(BATCH),--batch $(BATCH),) $(if $(DEVICE),--device $(DEVICE),)

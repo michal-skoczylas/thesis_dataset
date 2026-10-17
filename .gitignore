@@ -6,6 +6,8 @@ data/labeled/*
 data/labeled_upscaled/*
 data/processed/*
 data/processed_upscaled/*
+data/yolo_dataset/*
+data/cnn_dataset/*
 !data/source_frames/.gitignore
 !data/raw/.gitignore
 !data/raw_upscaled/.gitignore
@@ -13,8 +15,11 @@ data/processed_upscaled/*
 !data/labeled_upscaled/.gitignore
 !data/processed/.gitignore
 !data/processed_upscaled/.gitignore
+!data/yolo_dataset/.gitignore
+!data/cnn_dataset/.gitignore
 weights/*
 !weights/.gitignore
+runs/*
 
 
 # System & IDE
