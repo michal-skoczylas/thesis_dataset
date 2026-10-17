@@ -22,6 +22,7 @@ if env_path.exists():
 raw_data_dir = os.getenv("DATA_DIR", "data")
 DATA_DIR = (BASE_DIR / raw_data_dir).resolve() if not Path(raw_data_dir).is_absolute() else Path(raw_data_dir)
 
+SOURCE_FRAMES_DIR = DATA_DIR / "source_frames"
 RAW_DIR = DATA_DIR / "raw"
 RAW_UPSCALED_DIR = DATA_DIR / "raw_upscaled"
 LABELED_DIR = DATA_DIR / "labeled"

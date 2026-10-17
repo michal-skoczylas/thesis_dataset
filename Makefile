@@ -1,4 +1,4 @@
-.PHONY: help setup ls-up ls-down ls-logs pull push detect detect-upscaled import-ls export-ls crop crop-upscaled upscale upscale-benchmark pipeline-standard pipeline-upscaled pipeline-all pipeline status
+.PHONY: help setup ls-up ls-down ls-logs pull push sample sample-dry-run to-gray to-gray-inplace detect detect-upscaled import-ls export-ls crop crop-upscaled upscale upscale-benchmark pipeline-standard pipeline-upscaled pipeline-all pipeline status
 
 help:
 	@echo "======================================================================"
@@ -8,6 +8,15 @@ help:
 	@echo "  make ls-up              - Uruchamia Label Studio w tle (Docker)"
 	@echo "  make ls-down            - Zatrzymuje Label Studio"
 	@echo "  make ls-logs            - Pokazuje logi Label Studio"
+	@echo ""
+	@echo "Przygotowanie danych (Sampling i Normalizacja):"
+	@echo "  make sample             - Próbkuje co N-tą klatkę z wybranej kamery (camera_rgb / camera_raw)"
+	@echo "                            Przykład: make sample INPUT=/sciezka CAMERA=camera_rgb STRIDE=10"
+	@echo "  make sample-dry-run     - Symulacja próbkowania (podgląd bez kopiowania plików)"
+	@echo "  make to-gray            - Wykrywa RGB/RAW i konwertuje na czysty czarno-biały (usuwa kropki)"
+	@echo "                            Przykład: make to-gray INPUT=data/raw OUTPUT=data/raw_gray"
+	@echo "  make to-gray-inplace    - Konwertuje na czarno-biały w miejscu (nadpisuje pliki)"
+	@echo "                            Przykład: make to-gray-inplace INPUT=data/raw"
 	@echo ""
 	@echo "Wariant 1: Potok STANDARDOWY (BEZ upscalingu - baseline):"
 	@echo "  make detect             - Wykrywa dlonie na data/raw -> data/labeled"
@@ -49,6 +58,19 @@ pull:
 
 push:
 	dvc push
+
+# --- Przygotowanie danych (Sampling i Konwersja) ---
+sample:
+	python3 scripts/sample_frames.py $(if $(STRIDE),--stride $(STRIDE),) $(if $(CAMERA),--camera $(CAMERA),) $(if $(filter 1 true,$(TO_GRAY)),--to-gray,) $(if $(INPUT),--input $(INPUT),) $(if $(OUTPUT),--output $(OUTPUT),) $(if $(OFFSET),--offset $(OFFSET),)
+
+sample-dry-run:
+	python3 scripts/sample_frames.py --dry-run $(if $(STRIDE),--stride $(STRIDE),) $(if $(CAMERA),--camera $(CAMERA),) $(if $(INPUT),--input $(INPUT),) $(if $(OUTPUT),--output $(OUTPUT),)
+
+to-gray:
+	python3 scripts/convert_grayscale.py $(if $(INPUT),--input $(INPUT),) $(if $(OUTPUT),--output $(OUTPUT),)
+
+to-gray-inplace:
+	python3 scripts/convert_grayscale.py --in-place $(if $(INPUT),--input $(INPUT),)
 
 # --- Wariant 1: Standardowy ---
 detect:

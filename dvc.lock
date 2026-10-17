@@ -1,17 +1,18 @@
 schema: '2.0'
 stages:
   detect:
-    cmd: python3 scripts/run_detect.py --max-hands 2 --class-name hand
+    cmd: python3 scripts/run_detect.py --input-dir data/raw --output-dir 
+      data/labeled --max-hands 2 --class-name hand
     deps:
     - path: data/raw
       hash: md5
-      md5: 3b79995d5fa9c6a203a0572eb46cc00b.dir
-      size: 8599299
-      nfiles: 140
+      md5: bd1ff469319c7fefe3187dfb7a31e7ea.dir
+      size: 92346583
+      nfiles: 1843
     - path: scripts/detect_hands.py
       hash: md5
-      md5: 7d03c6263d49b569da64951d9e5926e9
-      size: 5741
+      md5: f7ac7b30f05e0d02a0dba05d97d31376
+      size: 6576
     - path: scripts/run_detect.py
       hash: md5
       md5: 426afbadbf7f63b36af7a1d3936d901e
@@ -23,11 +24,12 @@ stages:
     outs:
     - path: data/labeled
       hash: md5
-      md5: d25b26235ff0dcb52672e4a5d99ed494.dir
-      size: 5680950
-      nfiles: 282
+      md5: d7b894035138474c304f013d709cc61d.dir
+      size: 91253059
+      nfiles: 3966
   crop:
-    cmd: python3 scripts/process_annotations.py --crop-only --padding 0
+    cmd: python3 scripts/process_annotations.py --crop-only --padding 0 
+      --output-dir data/processed
     deps:
     - path: data/annotations/dataset.json
       hash: md5
@@ -35,19 +37,19 @@ stages:
       size: 1857
     - path: data/labeled
       hash: md5
-      md5: d25b26235ff0dcb52672e4a5d99ed494.dir
-      size: 5680950
-      nfiles: 282
+      md5: d7b894035138474c304f013d709cc61d.dir
+      size: 91253059
+      nfiles: 3966
     - path: scripts/process_annotations.py
       hash: md5
-      md5: 6072934f12b23875cb60da322e5c16dc
-      size: 5073
+      md5: b6e034785cbffa9b9a6e93e2ec43372c
+      size: 8030
     params:
       params.yaml:
         crop.padding: 0
     outs:
     - path: data/processed
       hash: md5
-      md5: 13dd7de5444de0fc565217de350c45de.dir
-      size: 5742
-      nfiles: 7
+      md5: 27b1e519e5c57f03bc19574354ee8fec.dir
+      size: 6488
+      nfiles: 8

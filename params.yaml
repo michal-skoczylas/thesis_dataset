@@ -8,3 +8,9 @@ crop:
 upscale:
   scale: 4
   device: "auto"
+
+sample:
+  stride: 10
+  camera: "camera_rgb"   # Opcje: "camera_rgb", "camera_raw", "all"
+  to_gray: false         # true: konwertuj od razu do czarno-białego (usuwa kropki/RGB)
+

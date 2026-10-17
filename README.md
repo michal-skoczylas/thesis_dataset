@@ -31,33 +31,94 @@ Label Studio będzie dostępne pod adresem: [http://localhost:8081](http://local
 
 ---
 
-## 🔄 Przepływ pracy (Dwa warianty potoku)
+## 🔄 Przepływ pracy (Pipeline)
 
-System wspiera dwa równoległe potoki badawcze (idealne do porównania w pracy inżynierskiej):
+Pełny proces przygotowania danych od surowych serii klatek z drona po gotowy dataset:
 
-### 1. Wariant STANDARDOWY (Baseline - bez upscalingu)
 ```
-[data/raw] (zdjęcia 320x320)
-     │
-     ▼  make detect (lub make pipeline-standard)
-[data/labeled] (predykcje bounding boxów rąk z Grounding DINO)
-     │
-     ▼  make crop
-[data/processed] (wycięte dłonie z oryginalnych zdjęć)
+[Surowe klatki z drona] (np. data/source_frames lub katalog zewnętrzny)
+        │
+        ▼  make sample (bierz co N-tą klatkę, domyślnie stride=10)
+   [data/raw] (wyselekcjonowane, unikalne klatki do datasetu)
+        │
+   ┌────┴──────────────────────────────────────────┐
+   ▼                                               ▼
+Wariant 1: STANDARDOWY                     Wariant 2: AI UPSCALED
+(make pipeline-standard)                   (make pipeline-upscaled)
+   │                                               │
+   ▼ make detect                                   ▼ make upscale
+[data/labeled]                             [data/raw_upscaled] (1280x1280)
+   │                                               │
+   ▼ make import-ls -> UI -> export-ls             ▼ make detect-upscaled
+[data/annotations/dataset.json]            [data/labeled_upscaled]
+   │                                               │
+   ▼ make crop                                     ▼ make crop-upscaled
+[data/processed] (cropy dłoni)             [data/processed_upscaled] (cropy AI)
 ```
 
-### 2. Wariant AI (Super-Resolution - Real-ESRGAN Compact x4)
+---
+
+## 🎞️ Krok 0: Próbkowanie klatek z drona (Frame Subsampling)
+
+Kamery dronów rejestrują wideo z prędkością 12, 30 lub 60 kl./s, generując w każdej sesji dwa podfoldery:
+- `camera_rgb` (obraz barwny)
+- `camera_raw` (surowy bufor sensora z mozaiką Bayera)
+
+Skrypt `scripts/sample_frames.py` pozwala wybrać **konkretną kamerę** (domyślnie `camera_rgb`) i pobrać **co N-tą klatkę** (np. co 10.), całkowicie pomijając klatki z drugiej kamery (brak duplikatów):
+
+### 1. Szybki podgląd (symulacja bez zapisywania plików):
+```bash
+make sample-dry-run INPUT=/sciezka/do/klatek CAMERA=camera_rgb STRIDE=10
 ```
-[data/raw] (zdjęcia 320x320)
-     │
-     ▼  make upscale (lub make pipeline-upscaled)
-[data/raw_upscaled] (wysoka rozdzielczość 1280x1280, MPS / Metal)
-     │
-     ▼  make detect-upscaled
-[data/labeled_upscaled] (detekcja na ostrych klatkach)
-     │
-     ▼  make crop-upscaled
-[data/processed_upscaled] (wycięte dłonie w wysokiej rozdzielczości)
+
+### 2. Wykonanie próbkowania do `data/raw`:
+```bash
+# Z domyślnymi parametrami z params.yaml:
+make sample INPUT=/sciezka/do/klatek
+
+# Z wyborem kamery i własnym krokiem:
+make sample INPUT=/sciezka/do/klatek CAMERA=camera_rgb STRIDE=10
+
+# Próbkowanie z automatyczną konwersją do czystego czarno-białego w locie:
+make sample INPUT=/sciezka/do/klatek CAMERA=camera_rgb STRIDE=10 TO_GRAY=1
+```
+
+### 3. Zaawansowane opcje przez skrypt Pythona:
+```bash
+# Podstawowe z wyborem kamery:
+python3 scripts/sample_frames.py --input /sciezka/do/klatek --output data/raw --camera camera_rgb --stride 10
+
+# Oszczędność dysku (tworzy dowiązania symboliczne zamiast kopii plików):
+python3 scripts/sample_frames.py --input /sciezka/do/klatek --output data/raw --camera camera_rgb --stride 10 --symlink
+
+# Wyczyszczenie data/raw przed próbkowaniem nowej partii:
+python3 scripts/sample_frames.py --input /sciezka/do/klatek --output data/raw --camera camera_rgb --stride 10 --clear
+```
+
+> [!TIP]
+> **Automatyczne czyszczenie ścieżek:**
+> Skrypt automatycznie usuwa zbędny poziom podfolderu `camera_rgb/` z katalogu docelowego, dzięki czemu w `data/raw/` klatki lądują bezpośrednio pod folderem danej sesji (np. `1_4metra/closehand/2026-10-15-14-45-08/00040.jpg`).
+
+---
+
+## 📸 Krok 0.5: Normalizacja do czarno-białego (Usuwanie kropek i konwersja RGB)
+
+Kamery dronów mogą generować dwa rodzaje plików:
+1. **RAW z czarnymi kropkami (`camera_raw`):** Surowa mozaika filtrów Bayera (CFA) zapisana jako monochrom. Powoduje efekt czarnego rastru/kropek i drastycznie psuje ostrość.
+2. **Kolorowe RGB (`camera_rgb`):** Klatki z silnym zielono-niebieskim zafarbem w sztucznym oświetleniu.
+
+Skrypt `scripts/convert_grayscale.py` automatycznie rozpoznaje format każdego pliku:
+- Dla **RAW**: wykonuje debayering (`COLOR_BayerRG2GRAY`), który **całkowicie usuwa czarne kropki** i przywraca gładką, pełną rozdzielczość.
+- Dla **RGB**: konwertuje na czysty monochromatyczny obraz.
+- Zachowuje pełną strukturę podfolderów i zapisuje obrazy jako 3-kanałowe ($R=G=B$), kompatybilne z YOLO/DINO.
+
+### Uruchomienie:
+```bash
+# Konwersja w miejscu (nadpisuje pliki w data/raw czystym czarno-białym bez kropek):
+make to-gray-inplace INPUT=data/raw
+
+# Lub zapis do nowego folderu:
+make to-gray INPUT=data/raw OUTPUT=data/raw_clean
 ```
 
 ---
@@ -69,6 +130,10 @@ Wszystkie operacje wykonasz jednym poleceniem:
 | Polecenie | Opis |
 |-----------|------|
 | `make help` | Wyświetla listę wszystkich dostępnych poleceń |
+| `make sample` | Próbkuje klatki z drona (co N-tą klatkę, domyślnie z `params.yaml`) |
+| `make sample-dry-run` | Symulacja próbkowania (podgląd w terminalu bez kopiowania plików) |
+| `make to-gray-inplace` | Konwertuje na czarno-biały w miejscu (usuwa czarne kropki i zafarb RGB) |
+| `make to-gray` | Konwertuje do nowego folderu (`INPUT=... OUTPUT=...`) |
 | `make pipeline-standard` | Uruchamia pełny potok standardowy (`detect` $\to$ `crop`) |
 | `make pipeline-upscaled` | Uruchamia pełny potok AI (`upscale` $\to$ `detect_upscaled` $\to$ `crop_upscaled`) |
 | `make pipeline-all` | Przelicza oba potoki równolegle w DVC |

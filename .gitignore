@@ -1,10 +1,12 @@
 # DVC managed data
+data/source_frames/*
 data/raw/*
 data/raw_upscaled/*
 data/labeled/*
 data/labeled_upscaled/*
 data/processed/*
 data/processed_upscaled/*
+!data/source_frames/.gitignore
 !data/raw/.gitignore
 !data/raw_upscaled/.gitignore
 !data/labeled/.gitignore
