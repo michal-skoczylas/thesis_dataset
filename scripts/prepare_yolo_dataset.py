@@ -22,6 +22,7 @@ try:
         ANNOTATIONS_DIR,
         LABEL_STUDIO_URL,
         PROJECT_ID,
+        LABEL_STUDIO_PROJECT_IDS,
         get_auth_headers,
     )
 except ImportError:
@@ -30,6 +31,7 @@ except ImportError:
     ANNOTATIONS_DIR = DATA_DIR / "annotations"
     LABEL_STUDIO_URL = "http://localhost:8081"
     PROJECT_ID = 1
+    LABEL_STUDIO_PROJECT_IDS = [1]
 
     def get_auth_headers():
         return {}
@@ -63,34 +65,58 @@ def extract_metadata_from_stem(stem: str):
     return gesture, distance
 
 
-def fetch_submitted_tasks_from_ls(project_id: int = PROJECT_ID, save_to: Path = None) -> list:
-    """Pobiera wyłącznie zadania zatwierdzone przez użytkownika (Submit) z Label Studio API."""
+def fetch_submitted_tasks_from_ls(project_ids: list = None, save_to: Path = None) -> list:
+    """Pobiera wyłącznie zadania zatwierdzone przez użytkownika (Submit) z jednego lub wielu projektów Label Studio API."""
     import requests
 
     if save_to is None:
         save_to = ANNOTATIONS_DIR / "dataset.json"
 
-    print(f"📡 Łączenie z Label Studio ({LABEL_STUDIO_URL}, Projekt {project_id})...")
-    url = f"{LABEL_STUDIO_URL}/api/projects/{project_id}/export?exportType=JSON"
+    if project_ids is None:
+        project_ids = LABEL_STUDIO_PROJECT_IDS
+    elif isinstance(project_ids, str):
+        project_ids = [int(p.strip()) for p in project_ids.replace(" ", ",").split(",") if p.strip().isdigit()]
+    elif isinstance(project_ids, int):
+        project_ids = [project_ids]
+
+    if not project_ids:
+        project_ids = [PROJECT_ID]
+
     headers = get_auth_headers()
+    all_tasks = []
+    seen_images = set()
 
-    try:
-        r = requests.get(url, headers=headers, timeout=10)
-        r.raise_for_status()
-        tasks = r.json()
-        print(f"📥 Pomyślnie pobrano {len(tasks)} zatwierdzonych zadań (Submit) z Label Studio.")
+    for pid in project_ids:
+        print(f"📡 Łączenie z Label Studio ({LABEL_STUDIO_URL}, Projekt {pid})...")
+        url = f"{LABEL_STUDIO_URL}/api/projects/{pid}/export?exportType=JSON"
+        try:
+            r = requests.get(url, headers=headers, timeout=10)
+            if r.status_code == 200:
+                p_tasks = r.json()
+                print(f"   📥 Projekt {pid}: pobrano {len(p_tasks)} zatwierdzonych zadań (Submit).")
+                for t in p_tasks:
+                    img_key = t.get("data", {}).get("image", "")
+                    if img_key and img_key not in seen_images:
+                        seen_images.add(img_key)
+                        all_tasks.append(t)
+            else:
+                print(f"   ⚠️  Projekt {pid} zwrócił kod {r.status_code}, pomijam.")
+        except Exception as e:
+            print(f"   ⚠️  Błąd pobierania zadań z projektu {pid}: {e}")
 
+    if all_tasks:
+        print(f"📦 Zgromadzono łącznie {len(all_tasks)} unikalnych zatwierdzonych klatek z projektów {project_ids}.")
         save_to.parent.mkdir(parents=True, exist_ok=True)
         with open(save_to, "w", encoding="utf-8") as f:
-            json.dump(tasks, f, indent=2, ensure_ascii=False)
-        return tasks
-    except Exception as e:
-        print(f"⚠️  Nie udało się pobrać danych bezpośrednio z API Label Studio: {e}")
-        if save_to.exists():
-            print(f"📂 Wczytuję ostatnio wyeksportowany plik: {save_to}")
-            with open(save_to, "r", encoding="utf-8") as f:
-                return json.load(f)
-        return []
+            json.dump(all_tasks, f, indent=2, ensure_ascii=False)
+        return all_tasks
+
+    if save_to.exists():
+        print(f"📂 Wczytuję ostatnio wyeksportowany plik: {save_to}")
+        with open(save_to, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    return []
 
 
 def load_items_from_label_studio(tasks: list) -> list:
@@ -310,6 +336,7 @@ def save_manifest(
 
 def prepare_dataset(
     source: str = "ls",
+    project_ids: list = None,
     labeled_dir: Path = LABELED_DIR,
     json_path: Path = None,
     yolo_dir: Path = DEFAULT_YOLO_DIR,
@@ -326,6 +353,7 @@ def prepare_dataset(
     1. Etap 1: data/yolo_dataset (dla YOLO Nano - detekcja dłoni)
     2. Etap 2: data/cnn_dataset (dla Custom CNN/ResNet - klasyfikacja gestu na cropach dłoni)
     Oba zbiory posiadają IDENTYCZNY podział train/val, zapobiegając data leakage!
+    Obsługuje łączenie zatwierdzonych zadań z wielu projektów Label Studio (Co-op).
     """
     random.seed(seed)
     yolo_dir = Path(yolo_dir)
@@ -339,7 +367,7 @@ def prepare_dataset(
         print("🎯 Źródło danych: Label Studio (wyłącznie zatwierdzone zadania 'Submit')")
         tasks = []
         if sync_ls:
-            tasks = fetch_submitted_tasks_from_ls(save_to=json_path)
+            tasks = fetch_submitted_tasks_from_ls(project_ids=project_ids, save_to=json_path)
         elif json_path.exists():
             with open(json_path, "r", encoding="utf-8") as f:
                 tasks = json.load(f)
@@ -594,6 +622,7 @@ if __name__ == "__main__":
         default="ls",
         help="Źródło danych: 'ls' (tylko Submit z Label Studio, domyślne) lub 'labeled-dir' (wszystkie z data/labeled)"
     )
+    parser.add_argument("--project-ids", type=str, default=None, help="Lista ID projektów Label Studio oddzielonych przecinkami, np. '1,2' (domyślnie z config.py)")
     parser.add_argument("--labeled-dir", type=str, default=str(LABELED_DIR), help="Katalog z predykcjami (używany przy --source labeled-dir)")
     parser.add_argument("--json-file", type=str, default=str(ANNOTATIONS_DIR / "dataset.json"), help="Ścieżka do dataset.json")
     parser.add_argument("--yolo-dir", type=str, default=str(DEFAULT_YOLO_DIR), help="Katalog wyjściowy datasetu YOLO")
@@ -615,6 +644,7 @@ if __name__ == "__main__":
 
     prepare_dataset(
         source=args.source,
+        project_ids=args.project_ids,
         labeled_dir=Path(args.labeled_dir),
         json_path=Path(args.json_file),
         yolo_dir=Path(args.yolo_dir),

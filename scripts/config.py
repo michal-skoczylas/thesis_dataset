@@ -36,6 +36,9 @@ WEIGHTS_DIR = BASE_DIR / "weights"
 LABEL_STUDIO_URL = os.getenv("LABEL_STUDIO_URL", "http://localhost:8081").rstrip("/")
 LABEL_STUDIO_TOKEN = os.getenv("LABEL_STUDIO_TOKEN", "")
 PROJECT_ID = int(os.getenv("LABEL_STUDIO_PROJECT_ID", "1"))
+# Obsługa wielu projektów kooperacyjnych (np. "1,2")
+_proj_ids_env = os.getenv("LABEL_STUDIO_PROJECT_IDS", str(PROJECT_ID))
+LABEL_STUDIO_PROJECT_IDS = [int(p.strip()) for p in _proj_ids_env.split(",") if p.strip().isdigit()]
 
 # Ścieżka przechowywania plików w kontenerze Label Studio
 LS_STORAGE_PATH = "/opt/data/labeled"

@@ -45,13 +45,35 @@ def find_python_with_ml():
 
 def main():
     extra_args = sys.argv[1:]
+    weights_path = BASE_DIR / "weights" / "yolo_hand_detector.pt"
+    
+    # Sprawdź czy użytkownik wymusił silnik lub czy wagi YOLO istnieją
+    use_yolo = False
+    if "--engine" in extra_args:
+        idx = extra_args.index("--engine")
+        if idx + 1 < len(extra_args) and extra_args[idx + 1] == "yolo":
+            use_yolo = True
+    elif "--engine" not in extra_args and weights_path.exists():
+        use_yolo = True
+
+    # Jeśli używamy YOLO, ultralytics działa bezpośrednio w sys.executable
+    if use_yolo:
+        try:
+            import ultralytics  # noqa: F401
+            print(f"[Runner] Wykryto pakiet ultralytics – uruchamiam szybką detekcję YOLO bezpośrednio: {sys.executable}")
+            cmd = [sys.executable, str(BASE_DIR / "scripts" / "detect_hands.py")] + extra_args
+            result = subprocess.run(cmd)
+            sys.exit(result.returncode)
+        except ImportError:
+            pass
+
     ml_python = find_python_with_ml()
 
     if ml_python:
-        print(f"[Runner] Wykryto lokalne środowisko Pythona z obsługą GPU (MPS/CUDA): {ml_python}")
+        print(f"[Runner] Wykryto lokalne środowisko Pythona z obsługą DINO (MPS/CUDA): {ml_python}")
         cmd = [ml_python, str(BASE_DIR / "scripts" / "detect_hands.py")] + extra_args
     else:
-        print("[Runner] Brak lokalnego pakietu ML. Uruchamianie w kontenerze Docker (model-ml)...")
+        print("[Runner] Brak lokalnego pakietu ML (DINO). Uruchamianie w kontenerze Docker (model-ml)...")
         cmd = [
             "docker", "run", "--rm",
             "-v", f"{BASE_DIR}:/workspace",

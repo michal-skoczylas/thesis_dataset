@@ -153,14 +153,21 @@ Wszystkie operacje wykonasz jednym poleceniem:
 | `make sample-dry-run` | Symulacja próbkowania (podgląd w terminalu bez kopiowania plików) |
 | `make to-gray-inplace` | Konwertuje na czarno-biały w miejscu (usuwa czarne kropki i zafarb RGB) |
 | `make to-gray` | Konwertuje do nowego folderu (`INPUT=... OUTPUT=...`) |
+| `make detect` | Wykrywa dlonie (Grounding DINO / auto przełączenie na YOLO) |
+| `make detect-yolo` | Szybka autodetekcja wytrenowanym modelem YOLO (50-100 FPS) |
+| `make crop` | Wytnij wycinki dloni -> data/processed |
 | `make pipeline-standard` | Uruchamia pełny potok standardowy (`detect` $\to$ `crop`) |
 | `make pipeline-upscaled` | Uruchamia pełny potok AI (`upscale` $\to$ `detect_upscaled` $\to$ `crop_upscaled`) |
 | `make pipeline-all` | Przelicza oba potoki równolegle w DVC |
 | `make upscale-benchmark` | Szybki test FPS i czasu inferencji upscalingu na Apple Silicon |
 | `make ls-up` | Uruchamia Label Studio w Dockerze (port 8081) |
 | `make ls-down` | Zatrzymuje Label Studio |
-| `make import-ls` | Importuje wykryte ramki i zdjęcia do Label Studio |
+| `make import-ls` | Importuje wykryte ramki i zdjęcia do Label Studio (Projekt 1) |
+| `make import-ls-coop` | Dzieli klatki 50/50 na 2 osobne projekty dla 2 osób (Michał i Kolega) |
 | `make export-ls` | Pobiera zatwierdzone przez człowieka adnotacje do JSON |
+| `make prepare-yolo` | Przygotowuje dane pod YOLO (Etap 1) oraz Custom CNN (Etap 2) |
+| `make prepare-yolo-zip` | Przygotowuje dane i pakuje do ZIP (pod Colab) |
+| `make train-yolo` | Rozpoczyna trening YOLO Nano (RTX CUDA / Apple Silicon MPS / CPU) |
 | `make pull` | Pobiera najnowszy zbiór danych z Google Drive (`dvc pull`) |
 | `make push` | Wysyła wygenerowane dane na Google Drive (`dvc push`) |
 | `make status` | Pokazuje status potoków oraz danych DVC |
@@ -248,3 +255,65 @@ W repozytorium znajduje się gotowy notatnik [`notebooks/train_yolo_colab.ipynb`
 4. Uruchom komórki po kolei — notatnik rozpakuje zbiór na szybki dysk SSD Colaba, wytrenuje model, wygeneruje wykresy mAP/loss i automatycznie zapisze plik `best.pt` z powrotem na Twój Google Drive!
 
 ---
+
+## ⚡ Pętla Active Learning: Autolabeling własnym modelem YOLO
+
+Gdy wytrenujesz pierwszą wersję modelu (`weights/yolo_hand_detector.pt`) na początkowej partii klatek, nie musisz już używać powolnego Grounding DINO (~0.5 FPS):
+1. **Automatyczne przełączenie (`make detect`):**  
+   Skrypt automatycznie wykrywa obecność pliku wag `weights/yolo_hand_detector.pt` i sam przełącza się na szybki silnik YOLO.
+2. **Wymuszenie szybkiej detekcji:**
+   ```bash
+   make detect-yolo
+   # lub z własnym progiem pewności:
+   python3 scripts/run_detect.py --engine yolo --conf 0.30
+   ```
+3. **Zalety:**
+   * Czas analizy **1800 klatek spada z 60 minut do ok. 1-2 minut** (50-100 FPS).
+   * Wstępnie narysowane ramki w Label Studio są znacznie lepiej dopasowane do perspektywy drona, ponieważ model uczył się na Twoich wcześniejszych zatwierdzeniach.
+
+---
+
+## 👥 Tryb Co-op: Podział 1800 klatek na 2 osoby
+
+Aby podzielić pracę z kolegą bez konieczności instalowania przez niego Dockera, Gita, Pythona czy DVC:
+
+```
+[Twój komputer]                                           [Komputer kolegi]
+┌─────────────────────────────────┐                       ┌────────────────────────┐
+│ Docker: Label Studio (:8081)    │                       │ Dowolna przeglądarka   │
+│  ├── Projekt 1: Michał (900 z.) │ <--- Tunel HTTPS ---- │ (Brak instalacji       │
+│  └── Projekt 2: Kolega (900 z.) │      (Cloudflare)     │  Dockera/Pythona/DVC!) │
+└─────────────────────────────────┘                       └────────────────────────┘
+```
+
+### Krok 1: Podział zadań 50/50 w Label Studio
+Wykonaj polecenie:
+```bash
+make import-ls-coop
+# Opcjonalnie z własnymi imionami:
+python3 scripts/import_to_ls.py --split-coop 2 --coop-names "Michał,Kamil"
+```
+Skrypt automatycznie:
+* Podzieli sesje wideo naprzemiennie (np. po 12 sesji na osobę, ~900 klatek każda).
+* Utworzy w Label Studio dwa osobne projekty: `Thesis Drone - Michał` (ID 1) oraz `Thesis Drone - Kolega` (ID 2).
+* Każdy projekt ma niezależny pasek postępu, dzięki czemu nie ma ryzyka konfliktów ani nadpisywania cudzej pracy!
+
+### Krok 2: Udostępnienie Label Studio koledze w 1 minutę
+W osobnym oknie terminala uruchom darmowy i bezpieczny tunel:
+```bash
+# Na Macu (instalacja jednorazowa): brew install cloudflared
+cloudflared tunnel --url http://localhost:8081
+```
+Otrzymasz publiczny link HTTPS (np. `https://random-words.trycloudflare.com`).  
+Wyślij ten link koledze. Kolega wchodzi w przeglądarce, wybiera swój projekt (np. `Thesis Drone - Kamil`) i oznacza zdjęcia. Wszystkie jego kliknięcia **Submit** zapisują się w czasie rzeczywistym u Ciebie na dysku!
+
+### Krok 3: Automatyczne scalenie pracy do treningu
+Gdy obaj zatwierdzicie swoje partie, uruchom:
+```bash
+make prepare-yolo-zip
+# Skrypt automatycznie połączy adnotacje z obu projektów (1 i 2)
+# w jeden spójny dataset pod YOLO i Custom CNN!
+```
+
+---
+

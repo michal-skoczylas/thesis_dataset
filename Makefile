@@ -19,7 +19,8 @@ help:
 	@echo "                            Przykład: make to-gray-inplace INPUT=data/raw"
 	@echo ""
 	@echo "Wariant 1: Potok STANDARDOWY (BEZ upscalingu - baseline):"
-	@echo "  make detect             - Wykrywa dlonie na data/raw -> data/labeled"
+	@echo "  make detect             - Wykrywa dlonie na data/raw -> data/labeled (Grounding DINO / auto)"
+	@echo "  make detect-yolo        - Szybka autodetekcja wytrenowanym modelem YOLO (Active Learning)"
 	@echo "  make crop               - Wytnij wycinki dloni -> data/processed"
 	@echo "  make pipeline-standard  - Uruchamia caly potok standardowy (detect -> crop)"
 	@echo ""
@@ -31,7 +32,8 @@ help:
 	@echo "  make pipeline-upscaled  - Uruchamia potok AI (upscale -> detect -> crop)"
 	@echo ""
 	@echo "Wspolne zadania potoku i Label Studio:"
-	@echo "  make import-ls          - Wgrywa zdjecia z predykcjami do Label Studio"
+	@echo "  make import-ls          - Wgrywa zdjecia z predykcjami do Label Studio (Projekt 1)"
+	@echo "  make import-ls-coop     - Dzieli zadania 50/50 na 2 projekty dla 2 osob (Michal i Kolega)"
 	@echo "  make export-ls          - Pobiera zatwierdzone adnotacje z Label Studio"
 	@echo "  make pipeline-all       - Przelicza oba potoki naraz (DVC repro)"
 	@echo "  make status             - Sprawdza stan potoku i plikow DVC"
@@ -40,8 +42,8 @@ help:
 	@echo "  make push               - Wysyla dane na Google Drive (dvc push)"
 	@echo ""
 	@echo "Trening YOLO (Etap 1 - Detektor Dloni):"
-	@echo "  make prepare-yolo       - Dzieli dane na train/val (GroupSplit po sesjach)"
-	@echo "  make prepare-yolo-zip   - Przygotowuje dane i pakuje do yolo_dataset.zip (pod Colab)"
+	@echo "  make prepare-yolo       - Przygotowuje dane z Label Studio pod YOLO i Custom CNN"
+	@echo "  make prepare-yolo-zip   - Pakuje yolo_dataset.zip oraz cnn_dataset.zip (pod Colab)"
 	@echo "  make train-yolo         - Rozpoczyna trening YOLO Nano (auto: CUDA/MPS/CPU)"
 	@echo "======================================================================"
 
@@ -80,6 +82,9 @@ to-gray-inplace:
 detect:
 	dvc repro detect
 
+detect-yolo:
+	python3 scripts/run_detect.py --engine yolo $(if $(WEIGHTS),--weights $(WEIGHTS),) $(if $(CONF),--conf $(CONF),)
+
 crop:
 	dvc repro crop
 
@@ -106,6 +111,9 @@ pipeline-upscaled:
 import-ls:
 	python3 scripts/import_to_ls.py
 
+import-ls-coop:
+	python3 scripts/import_to_ls.py --split-coop 2 $(if $(NAMES),--coop-names $(NAMES),)
+
 export-ls:
 	python3 scripts/process_annotations.py --export-only
 
@@ -120,10 +128,10 @@ status:
 
 # --- Trening YOLO (Etap 1: Detektor dłoni) ---
 prepare-yolo:
-	python3 scripts/prepare_yolo_dataset.py $(if $(SOURCE),--source $(SOURCE),) $(if $(SPLIT),--split-strategy $(SPLIT),) $(if $(RATIO),--val-ratio $(RATIO),)
+	python3 scripts/prepare_yolo_dataset.py $(if $(SOURCE),--source $(SOURCE),) $(if $(PROJECTS),--project-ids $(PROJECTS),) $(if $(SPLIT),--split-strategy $(SPLIT),) $(if $(RATIO),--val-ratio $(RATIO),)
 
 prepare-yolo-zip:
-	python3 scripts/prepare_yolo_dataset.py --zip $(if $(SOURCE),--source $(SOURCE),) $(if $(SPLIT),--split-strategy $(SPLIT),) $(if $(RATIO),--val-ratio $(RATIO),)
+	python3 scripts/prepare_yolo_dataset.py --zip $(if $(SOURCE),--source $(SOURCE),) $(if $(PROJECTS),--project-ids $(PROJECTS),) $(if $(SPLIT),--split-strategy $(SPLIT),) $(if $(RATIO),--val-ratio $(RATIO),)
 
 train-yolo:
 	python3 scripts/train_yolo.py $(if $(MODEL),--model $(MODEL),) $(if $(EPOCHS),--epochs $(EPOCHS),) $(if $(BATCH),--batch $(BATCH),) $(if $(DEVICE),--device $(DEVICE),)
