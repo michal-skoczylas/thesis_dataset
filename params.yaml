@@ -1,6 +1,8 @@
 detect:
   max_hands: 2
   target_class: "hand"
+  engine: "auto"        # "auto" (YOLO jesli weights istnieja, w przeciwnym razie DINO), "yolo", "dino"
+  conf: 0.25
 
 crop:
   padding: 0
@@ -14,3 +16,7 @@ sample:
   camera: "camera_rgb"   # Opcje: "camera_rgb", "camera_raw", "all"
   to_gray: false         # true: konwertuj od razu do czarno-białego (usuwa kropki/RGB)
 
+coop:
+  names: ["dane michal", "dane janek"]
+  strategy: "interleaved"   # Opcje: "interleaved" (naprzemiennie), "distance" (wg odleglosci), "gesture" (wg gestow), "ratio" (proporcjonalnie)
+  ratio: "50:50"            # Proporcja np. "50:50", "60:40", "70:30"

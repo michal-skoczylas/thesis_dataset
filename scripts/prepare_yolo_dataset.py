@@ -65,15 +65,42 @@ def extract_metadata_from_stem(stem: str):
     return gesture, distance
 
 
+def discover_all_ls_projects(headers=None) -> list:
+    """Automatycznie wykrywa wszystkie projekty w Label Studio posiadające zadania (np. dane michal i dane janek)."""
+    import requests
+    if headers is None:
+        headers = get_auth_headers()
+    try:
+        url = f"{LABEL_STUDIO_URL}/api/projects"
+        r = requests.get(url, headers=headers, timeout=5)
+        if r.status_code == 200:
+            data = r.json()
+            results = data.get("results", []) if isinstance(data, dict) else data
+            pids = [p["id"] for p in results if "id" in p]
+            if pids:
+                return sorted(list(set(pids)))
+    except Exception as e:
+        print(f"⚠️  Nie udało się automatycznie pobrać listy projektów z Label Studio: {e}")
+    return [PROJECT_ID]
+
+
 def fetch_submitted_tasks_from_ls(project_ids: list = None, save_to: Path = None) -> list:
-    """Pobiera wyłącznie zadania zatwierdzone przez użytkownika (Submit) z jednego lub wielu projektów Label Studio API."""
+    """Pobiera wyłącznie zadania zatwierdzone przez użytkownika (Submit) ze wszystkich projektów kooperacyjnych Label Studio."""
     import requests
 
     if save_to is None:
         save_to = ANNOTATIONS_DIR / "dataset.json"
 
+    headers = get_auth_headers()
+
     if project_ids is None:
-        project_ids = LABEL_STUDIO_PROJECT_IDS
+        # Jeśli w .env lub parametrach podano więcej niż 1 projekt, użyj ich;
+        # w przeciwnym razie automatycznie wykryj wszystkie projekty w Label Studio
+        env_pids = os.getenv("LABEL_STUDIO_PROJECT_IDS")
+        if env_pids:
+            project_ids = [int(p.strip()) for p in env_pids.split(",") if p.strip().isdigit()]
+        else:
+            project_ids = discover_all_ls_projects(headers)
     elif isinstance(project_ids, str):
         project_ids = [int(p.strip()) for p in project_ids.replace(" ", ",").split(",") if p.strip().isdigit()]
     elif isinstance(project_ids, int):
@@ -82,12 +109,11 @@ def fetch_submitted_tasks_from_ls(project_ids: list = None, save_to: Path = None
     if not project_ids:
         project_ids = [PROJECT_ID]
 
-    headers = get_auth_headers()
     all_tasks = []
     seen_images = set()
 
+    print(f"📡 Odpytywanie projektów Label Studio: {project_ids}...")
     for pid in project_ids:
-        print(f"📡 Łączenie z Label Studio ({LABEL_STUDIO_URL}, Projekt {pid})...")
         url = f"{LABEL_STUDIO_URL}/api/projects/{pid}/export?exportType=JSON"
         try:
             r = requests.get(url, headers=headers, timeout=10)

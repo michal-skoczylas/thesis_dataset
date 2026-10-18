@@ -8,6 +8,7 @@ help:
 	@echo "  make ls-up              - Uruchamia Label Studio w tle (Docker)"
 	@echo "  make ls-down            - Zatrzymuje Label Studio"
 	@echo "  make ls-logs            - Pokazuje logi Label Studio"
+	@echo "  make tunnel             - Uruchamia bezpieczny tunel Cloudflare dla kolegi"
 	@echo ""
 	@echo "Przygotowanie danych (Sampling i Normalizacja):"
 	@echo "  make sample             - Próbkuje co N-tą klatkę z wybranej kamery (camera_rgb / camera_raw)"
@@ -58,6 +59,9 @@ ls-down:
 
 ls-logs:
 	docker compose logs -f
+
+tunnel:
+	cloudflared tunnel --url http://localhost:8081 --http-host-header=localhost:8081
 
 pull:
 	dvc pull
@@ -112,7 +116,7 @@ import-ls:
 	python3 scripts/import_to_ls.py
 
 import-ls-coop:
-	python3 scripts/import_to_ls.py --split-coop 2 $(if $(NAMES),--coop-names $(NAMES),)
+	python3 scripts/import_to_ls.py --split-coop 2 $(if $(NAMES),--coop-names $(NAMES),) $(if $(STRATEGY),--strategy $(STRATEGY),) $(if $(RATIO),--ratio $(RATIO),) $(if $(filter 1 true,$(REASSIGN)),--reassign,)
 
 export-ls:
 	python3 scripts/process_annotations.py --export-only

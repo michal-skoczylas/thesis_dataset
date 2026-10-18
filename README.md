@@ -4,6 +4,10 @@ System wersjonowania danych, automatycznej detekcji rąk i przygotowywania zbior
 
 ---
 
+> 📖 **Szczegółowa Dokumentacja:** Kompletne przewodniki krok po kroku, instrukcje kooperacji oraz opis powstawania zbiorów treningowych znajdują się w katalogu [**docs/**](file:///Users/michalskoczylas/Documents/studia/thesis/dane/docs/README.md).
+
+---
+
 ## 🧠 Architektura Systemu: Dwustopniowy Detektor Gestów
 
 Projekt opiera się na **architekturze dwustopniowej (Two-Stage Detection & Classification)**, zoptymalizowanej pod kątem urządzeń brzegowych (Edge AI / dron):
@@ -286,17 +290,33 @@ Aby podzielić pracę z kolegą bez konieczności instalowania przez niego Docke
 └─────────────────────────────────┘                       └────────────────────────┘
 ```
 
-### Krok 1: Podział zadań 50/50 w Label Studio
-Wykonaj polecenie:
-```bash
-make import-ls-coop
-# Opcjonalnie z własnymi imionami:
-python3 scripts/import_to_ls.py --split-coop 2 --coop-names "Michał,Kamil"
+### Krok 1: Konfiguracja i podział zadań w Label Studio
+Możesz skonfigurować nazwy projektów oraz strategię podziału w pliku `params.yaml`:
+```yaml
+coop:
+  names: ["dane michal", "dane janek"]
+  strategy: "interleaved"   # Opcje: "interleaved", "distance", "gesture", "ratio"
+  ratio: "50:50"            # Proporcja np. "50:50", "60:40", "70:30"
 ```
-Skrypt automatycznie:
-* Podzieli sesje wideo naprzemiennie (np. po 12 sesji na osobę, ~900 klatek każda).
-* Utworzy w Label Studio dwa osobne projekty: `Thesis Drone - Michał` (ID 1) oraz `Thesis Drone - Kolega` (ID 2).
-* Każdy projekt ma niezależny pasek postępu, dzięki czemu nie ma ryzyka konfliktów ani nadpisywania cudzej pracy!
+
+Dostępne strategie podziału:
+1. **`interleaved` (Domyślna):** Naprzemienne przydzielanie sesji nagraniowych (równy podział ~50/50, obaj dostają przekrój wszystkich gestów i odległości).
+2. **`distance`:** Podział według odległości od drona (np. Michał: bliskie ujęcia 1.4m + 1.7m, Janek: dalsze ujęcia 2.0m + 1.7m).
+3. **`gesture`:** Podział według gestów (np. Michał: `closehand, openhand, ok, v`, Janek: `shaka, dislike, left, right`).
+4. **`ratio`:** Podział proporcjonalny według zadanego stosunku (np. `60:40` lub `70:30`).
+
+Uruchomienie podziału:
+```bash
+# Uruchomienie ze strategią domyślną z params.yaml:
+make import-ls-coop
+
+# Lub z własnymi parametrami z linii poleceń:
+make import-ls-coop STRATEGY=distance REASSIGN=1
+make import-ls-coop STRATEGY=gesture REASSIGN=1
+make import-ls-coop RATIO="60:40" REASSIGN=1
+make import-ls-coop NAMES="dane michal,dane janek"
+```
+*(Flaga `REASSIGN=1` czyści istniejące zadania w projektach i rozdziela je na nowo według nowej strategii).*
 
 ### Krok 2: Udostępnienie Label Studio koledze w 1 minutę
 W osobnym oknie terminala uruchom darmowy i bezpieczny tunel:

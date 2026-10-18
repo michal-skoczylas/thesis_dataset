@@ -9,6 +9,8 @@ services:
       - LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true
       - LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=/opt/data
       - LABEL_STUDIO_SECRET_KEY=${LABEL_STUDIO_SECRET_KEY:-UVGyySmYSA_2X2h9FOsyC57R8NB8N-LHVc16qJFnMdbR_PsrZF8nLbOU72hDFzrjHu_DNNSIGjrDiR5z0_F3uw}
+      - USE_ENFORCE_CSRF_CHECKS=false
+      - CSRF_TRUSTED_ORIGINS=https://*.trycloudflare.com,https://*.ngrok-free.app,https://*.ngrok.io,http://localhost:8081,http://127.0.0.1:8081
     volumes:
       - label-studio-data:/label-studio/data
       - ./data:/opt/data

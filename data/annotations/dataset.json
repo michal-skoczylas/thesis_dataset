@@ -1,1 +1,544 @@
-[]
+[
+  {
+    "id": 5,
+    "annotations": [
+      {
+        "id": 6,
+        "completed_by": 1,
+        "result": [
+          {
+            "original_width": 320,
+            "original_height": 320,
+            "image_rotation": 0,
+            "value": {
+              "x": 50.78947368421052,
+              "y": 5.526315789473677,
+              "width": 7.2368421052631495,
+              "height": 14.078947368421051,
+              "rotation": 0,
+              "rectanglelabels": [
+                "hand"
+              ]
+            },
+            "id": "2obyqvhSUe",
+            "from_name": "label",
+            "to_name": "image",
+            "type": "rectanglelabels",
+            "origin": "manual"
+          }
+        ],
+        "was_cancelled": false,
+        "ground_truth": false,
+        "created_at": "2026-10-18T12:03:33.741250Z",
+        "updated_at": "2026-10-18T12:03:33.741270Z",
+        "draft_created_at": null,
+        "lead_time": 12.79,
+        "prediction": {},
+        "result_count": 1,
+        "unique_id": "3a702e71-6d20-494a-8f06-d74ead0ce5ba",
+        "import_id": null,
+        "last_action": null,
+        "bulk_created": false,
+        "task": 5,
+        "project": 1,
+        "updated_by": 1,
+        "parent_prediction": null,
+        "parent_annotation": null,
+        "last_created_by": null
+      }
+    ],
+    "drafts": [],
+    "predictions": [],
+    "data": {
+      "image": "/data/local-files/?d=labeled/train/images/1_4metra_closehand_2026-10-15-14-45-08_00080.jpg"
+    },
+    "meta": {},
+    "created_at": "2026-10-18T12:02:48.585574Z",
+    "updated_at": "2026-10-18T12:03:33.766424Z",
+    "allow_skip": true,
+    "inner_id": 5,
+    "total_annotations": 1,
+    "cancelled_annotations": 0,
+    "total_predictions": 0,
+    "comment_count": 0,
+    "unresolved_comment_count": 0,
+    "last_comment_updated_at": null,
+    "project": 1,
+    "updated_by": 1,
+    "comment_authors": []
+  },
+  {
+    "id": 7,
+    "annotations": [
+      {
+        "id": 7,
+        "completed_by": 1,
+        "result": [
+          {
+            "original_width": 320,
+            "original_height": 320,
+            "image_rotation": 0,
+            "value": {
+              "x": 39.50225,
+              "y": 39.60535,
+              "width": 6.5777,
+              "height": 6.0681,
+              "rotation": 0,
+              "rectanglelabels": [
+                "hand"
+              ]
+            },
+            "id": "0",
+            "from_name": "label",
+            "to_name": "image",
+            "type": "rectanglelabels",
+            "origin": "prediction"
+          }
+        ],
+        "was_cancelled": false,
+        "ground_truth": false,
+        "created_at": "2026-10-18T12:03:39.394827Z",
+        "updated_at": "2026-10-18T12:03:39.394847Z",
+        "draft_created_at": null,
+        "lead_time": 1.644,
+        "prediction": {},
+        "result_count": 1,
+        "unique_id": "cc46b818-542b-4ed0-996d-9c9d50e0e75d",
+        "import_id": null,
+        "last_action": null,
+        "bulk_created": false,
+        "task": 7,
+        "project": 1,
+        "updated_by": 1,
+        "parent_prediction": 3797,
+        "parent_annotation": null,
+        "last_created_by": null
+      }
+    ],
+    "drafts": [],
+    "predictions": [
+      3797
+    ],
+    "data": {
+      "image": "/data/local-files/?d=labeled/train/images/1_4metra_closehand_2026-10-15-14-45-08_00120.jpg"
+    },
+    "meta": {},
+    "created_at": "2026-10-18T12:02:48.585610Z",
+    "updated_at": "2026-10-18T12:03:39.418861Z",
+    "allow_skip": true,
+    "inner_id": 7,
+    "total_annotations": 1,
+    "cancelled_annotations": 0,
+    "total_predictions": 1,
+    "comment_count": 0,
+    "unresolved_comment_count": 0,
+    "last_comment_updated_at": null,
+    "project": 1,
+    "updated_by": 1,
+    "comment_authors": []
+  },
+  {
+    "id": 447,
+    "annotations": [
+      {
+        "id": 10,
+        "completed_by": 1,
+        "result": [
+          {
+            "original_width": 320,
+            "original_height": 320,
+            "image_rotation": 0,
+            "value": {
+              "x": 49.5674,
+              "y": 2.30805,
+              "width": 5.9886,
+              "height": 5.8551,
+              "rotation": 0,
+              "rectanglelabels": [
+                "hand"
+              ]
+            },
+            "id": "0",
+            "from_name": "label",
+            "to_name": "image",
+            "type": "rectanglelabels",
+            "origin": "prediction"
+          }
+        ],
+        "was_cancelled": false,
+        "ground_truth": false,
+        "created_at": "2026-10-18T12:50:09.315398Z",
+        "updated_at": "2026-10-18T12:50:09.315412Z",
+        "draft_created_at": null,
+        "lead_time": 5.275,
+        "prediction": {
+          "id": 3920,
+          "result": [
+            {
+              "id": "0",
+              "from_name": "label",
+              "to_name": "image",
+              "type": "rectanglelabels",
+              "value": {
+                "x": 49.5674,
+                "y": 2.30805,
+                "width": 5.9886,
+                "height": 5.8551,
+                "rectanglelabels": [
+                  "hand"
+                ]
+              }
+            }
+          ],
+          "model_version": "undefined",
+          "created_ago": "47 minutes",
+          "score": null,
+          "cluster": null,
+          "neighbors": null,
+          "mislabeling": 0.0,
+          "created_at": "2026-10-18T12:02:48.769240Z",
+          "updated_at": "2026-10-18T12:02:48.769248Z",
+          "model": null,
+          "model_run": null,
+          "task": 447,
+          "project": 2
+        },
+        "result_count": 1,
+        "unique_id": "b9e6f83c-b55a-4be4-8378-607797171258",
+        "import_id": null,
+        "last_action": null,
+        "bulk_created": false,
+        "task": 447,
+        "project": 2,
+        "updated_by": 1,
+        "parent_prediction": 3920,
+        "parent_annotation": null,
+        "last_created_by": null
+      }
+    ],
+    "drafts": [],
+    "predictions": [
+      3920
+    ],
+    "data": {
+      "image": "/data/local-files/?d=labeled/train/images/1_4metra_dislike_2026-10-15-14-47-50_00000.jpg"
+    },
+    "meta": {},
+    "created_at": "2026-10-18T12:02:48.748859Z",
+    "updated_at": "2026-10-18T12:50:09.336166Z",
+    "allow_skip": true,
+    "inner_id": 1,
+    "total_annotations": 1,
+    "cancelled_annotations": 0,
+    "total_predictions": 1,
+    "comment_count": 0,
+    "unresolved_comment_count": 0,
+    "last_comment_updated_at": null,
+    "project": 2,
+    "updated_by": 1,
+    "comment_authors": []
+  },
+  {
+    "id": 449,
+    "annotations": [
+      {
+        "id": 11,
+        "completed_by": 1,
+        "result": [
+          {
+            "original_width": 320,
+            "original_height": 320,
+            "image_rotation": 0,
+            "value": {
+              "x": 36.203202941176464,
+              "y": 9.885264705882355,
+              "width": 7.0635,
+              "height": 9.633,
+              "rotation": 0,
+              "rectanglelabels": [
+                "hand"
+              ]
+            },
+            "id": "0",
+            "from_name": "label",
+            "to_name": "image",
+            "type": "rectanglelabels",
+            "origin": "prediction-changed"
+          }
+        ],
+        "was_cancelled": false,
+        "ground_truth": false,
+        "created_at": "2026-10-18T12:52:58.404246Z",
+        "updated_at": "2026-10-18T12:52:58.404263Z",
+        "draft_created_at": "2026-10-18T12:49:56.170374Z",
+        "lead_time": 5.537,
+        "prediction": {
+          "id": 3921,
+          "result": [
+            {
+              "id": "0",
+              "from_name": "label",
+              "to_name": "image",
+              "type": "rectanglelabels",
+              "value": {
+                "x": 36.32085,
+                "y": 10.473500000000001,
+                "width": 7.0635,
+                "height": 9.633,
+                "rectanglelabels": [
+                  "hand"
+                ]
+              }
+            }
+          ],
+          "model_version": "undefined",
+          "created_ago": "50 minutes",
+          "score": null,
+          "cluster": null,
+          "neighbors": null,
+          "mislabeling": 0.0,
+          "created_at": "2026-10-18T12:02:48.769263Z",
+          "updated_at": "2026-10-18T12:02:48.769267Z",
+          "model": null,
+          "model_run": null,
+          "task": 449,
+          "project": 2
+        },
+        "result_count": 1,
+        "unique_id": "bdee46d1-6787-45b0-9b74-c8e0aeb5582e",
+        "import_id": null,
+        "last_action": null,
+        "bulk_created": false,
+        "task": 449,
+        "project": 2,
+        "updated_by": 1,
+        "parent_prediction": null,
+        "parent_annotation": null,
+        "last_created_by": null
+      }
+    ],
+    "drafts": [],
+    "predictions": [
+      3921
+    ],
+    "data": {
+      "image": "/data/local-files/?d=labeled/train/images/1_4metra_dislike_2026-10-15-14-47-50_00040.jpg"
+    },
+    "meta": {},
+    "created_at": "2026-10-18T12:02:48.748910Z",
+    "updated_at": "2026-10-18T12:52:58.428807Z",
+    "allow_skip": true,
+    "inner_id": 3,
+    "total_annotations": 1,
+    "cancelled_annotations": 0,
+    "total_predictions": 1,
+    "comment_count": 0,
+    "unresolved_comment_count": 0,
+    "last_comment_updated_at": null,
+    "project": 2,
+    "updated_by": 1,
+    "comment_authors": []
+  },
+  {
+    "id": 454,
+    "annotations": [
+      {
+        "id": 9,
+        "completed_by": 1,
+        "result": [
+          {
+            "original_width": 320,
+            "original_height": 320,
+            "image_rotation": 0,
+            "value": {
+              "x": 42.018150000000006,
+              "y": 43.5195,
+              "width": 6.9657,
+              "height": 8.080400000000001,
+              "rotation": 0,
+              "rectanglelabels": [
+                "hand"
+              ]
+            },
+            "id": "0",
+            "from_name": "label",
+            "to_name": "image",
+            "type": "rectanglelabels",
+            "origin": "prediction"
+          }
+        ],
+        "was_cancelled": false,
+        "ground_truth": false,
+        "created_at": "2026-10-18T12:03:54.336317Z",
+        "updated_at": "2026-10-18T12:03:54.336337Z",
+        "draft_created_at": null,
+        "lead_time": 1.371,
+        "prediction": {
+          "id": 3924,
+          "result": [
+            {
+              "id": "0",
+              "from_name": "label",
+              "to_name": "image",
+              "type": "rectanglelabels",
+              "value": {
+                "x": 42.018150000000006,
+                "y": 43.5195,
+                "width": 6.9657,
+                "height": 8.080400000000001,
+                "rectanglelabels": [
+                  "hand"
+                ]
+              }
+            }
+          ],
+          "model_version": "undefined",
+          "created_ago": "1 minute",
+          "score": null,
+          "cluster": null,
+          "neighbors": null,
+          "mislabeling": 0.0,
+          "created_at": "2026-10-18T12:02:48.769306Z",
+          "updated_at": "2026-10-18T12:02:48.769308Z",
+          "model": null,
+          "model_run": null,
+          "task": 454,
+          "project": 2
+        },
+        "result_count": 1,
+        "unique_id": "e7ed17a3-8932-4f43-a890-941d6216a612",
+        "import_id": null,
+        "last_action": null,
+        "bulk_created": false,
+        "task": 454,
+        "project": 2,
+        "updated_by": 1,
+        "parent_prediction": 3924,
+        "parent_annotation": null,
+        "last_created_by": null
+      }
+    ],
+    "drafts": [],
+    "predictions": [
+      3924
+    ],
+    "data": {
+      "image": "/data/local-files/?d=labeled/train/images/1_4metra_dislike_2026-10-15-14-47-50_00140.jpg"
+    },
+    "meta": {},
+    "created_at": "2026-10-18T12:02:48.748992Z",
+    "updated_at": "2026-10-18T12:03:54.358536Z",
+    "allow_skip": true,
+    "inner_id": 8,
+    "total_annotations": 1,
+    "cancelled_annotations": 0,
+    "total_predictions": 1,
+    "comment_count": 0,
+    "unresolved_comment_count": 0,
+    "last_comment_updated_at": null,
+    "project": 2,
+    "updated_by": 1,
+    "comment_authors": []
+  },
+  {
+    "id": 455,
+    "annotations": [
+      {
+        "id": 8,
+        "completed_by": 1,
+        "result": [
+          {
+            "original_width": 320,
+            "original_height": 320,
+            "image_rotation": 0,
+            "value": {
+              "x": 40.56505,
+              "y": 30.369249999999997,
+              "width": 6.7337,
+              "height": 9.4527,
+              "rotation": 0,
+              "rectanglelabels": [
+                "hand"
+              ]
+            },
+            "id": "0",
+            "from_name": "label",
+            "to_name": "image",
+            "type": "rectanglelabels",
+            "origin": "prediction"
+          }
+        ],
+        "was_cancelled": false,
+        "ground_truth": false,
+        "created_at": "2026-10-18T12:03:48.479318Z",
+        "updated_at": "2026-10-18T12:03:48.479333Z",
+        "draft_created_at": null,
+        "lead_time": 1.167,
+        "prediction": {
+          "id": 3925,
+          "result": [
+            {
+              "id": "0",
+              "from_name": "label",
+              "to_name": "image",
+              "type": "rectanglelabels",
+              "value": {
+                "x": 40.56505,
+                "y": 30.369249999999997,
+                "width": 6.7337,
+                "height": 9.4527,
+                "rectanglelabels": [
+                  "hand"
+                ]
+              }
+            }
+          ],
+          "model_version": "undefined",
+          "created_ago": "0 minutes",
+          "score": null,
+          "cluster": null,
+          "neighbors": null,
+          "mislabeling": 0.0,
+          "created_at": "2026-10-18T12:02:48.769319Z",
+          "updated_at": "2026-10-18T12:02:48.769321Z",
+          "model": null,
+          "model_run": null,
+          "task": 455,
+          "project": 2
+        },
+        "result_count": 1,
+        "unique_id": "ba034dfa-811d-4284-b5d6-24d29cf81df3",
+        "import_id": null,
+        "last_action": null,
+        "bulk_created": false,
+        "task": 455,
+        "project": 2,
+        "updated_by": 1,
+        "parent_prediction": 3925,
+        "parent_annotation": null,
+        "last_created_by": null
+      }
+    ],
+    "drafts": [],
+    "predictions": [
+      3925
+    ],
+    "data": {
+      "image": "/data/local-files/?d=labeled/train/images/1_4metra_dislike_2026-10-15-14-47-50_00160.jpg"
+    },
+    "meta": {},
+    "created_at": "2026-10-18T12:02:48.749008Z",
+    "updated_at": "2026-10-18T12:03:48.502423Z",
+    "allow_skip": true,
+    "inner_id": 9,
+    "total_annotations": 1,
+    "cancelled_annotations": 0,
+    "total_predictions": 1,
+    "comment_count": 0,
+    "unresolved_comment_count": 0,
+    "last_comment_updated_at": null,
+    "project": 2,
+    "updated_by": 1,
+    "comment_authors": []
+  }
+]

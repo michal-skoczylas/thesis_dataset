@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 from collections import defaultdict
 import requests
+import yaml
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR / "scripts"))
@@ -19,6 +20,21 @@ from config import (
     get_auth_headers,
 )
 
+KNOWN_GESTURES = ["closehand", "openhand", "dislike", "shaka", "left", "right", "ok", "v"]
+KNOWN_DISTANCES = ["1_4metra", "1_7metra", "2metry"]
+
+
+def load_params():
+    """Wczytuje parametry z params.yaml jeśli plik istnieje."""
+    params_file = BASE_DIR / "params.yaml"
+    if params_file.exists():
+        try:
+            with open(params_file, "r", encoding="utf-8") as f:
+                return yaml.safe_load(f) or {}
+        except Exception:
+            pass
+    return {}
+
 
 def parse_session_from_filename(stem: str) -> str:
     """Ekstraktuje identyfikator sesji z nazwy pliku."""
@@ -28,29 +44,39 @@ def parse_session_from_filename(stem: str) -> str:
     return "session_default"
 
 
+def extract_metadata_from_stem(stem: str):
+    """Wyciąga gest i odległość z nazwy sesji/pliku."""
+    s_low = stem.lower()
+    gesture = next((g for g in sorted(KNOWN_GESTURES, key=len, reverse=True) if g in s_low), "unknown")
+    distance = next((d for d in KNOWN_DISTANCES if d in s_low), "unknown")
+    return gesture, distance
+
+
 def ensure_project(headers: dict, project_id: int = None, title: str = None) -> int:
-    """Sprawdza czy projekt w Label Studio istnieje po ID lub tytule. Jeśli nie, tworzy go."""
-    # 1. Jeśli podano ID, sprawdź czy istnieje
+    """Sprawdza czy projekt w Label Studio istnieje po ID lub tytule. Jeśli istnieje z inną nazwą, aktualizuje nazwę."""
     if project_id is not None:
         url = f"{LABEL_STUDIO_URL}/api/projects/{project_id}"
         resp = requests.get(url, headers=headers)
         if resp.status_code == 200:
             p_data = resp.json()
-            p_title = p_data.get("title", "")
-            print(f"Projekt o ID {project_id} ('{p_title}') istnieje w Label Studio.")
+            curr_title = p_data.get("title", "")
+            if title and curr_title != title:
+                # Zaktualizuj nazwę projektu na żądaną
+                patch_resp = requests.patch(url, headers=headers, json={"title": title})
+                if patch_resp.status_code == 200:
+                    print(f"Zaktualizowano nazwę projektu ID {project_id}: '{curr_title}' -> '{title}'")
             return project_id
 
-    # 2. Sprawdź po tytule wśród wszystkich projektów
+    # Sprawdź po tytule wśród wszystkich projektów
     if title:
         list_resp = requests.get(f"{LABEL_STUDIO_URL}/api/projects", headers=headers)
         if list_resp.status_code == 200:
             projects = list_resp.json().get("results", [])
             for p in projects:
                 if p.get("title") == title:
-                    print(f"Znaleziono istniejący projekt '{title}' (ID {p.get('id')}).")
                     return p.get("id")
 
-    # 3. Utwórz nowy projekt
+    # Utwórz nowy projekt
     target_title = title or (f"Thesis Drone Project {project_id}" if project_id else "Thesis Drone Hand Gestures")
     print(f"Tworzenie nowego projektu w Label Studio: '{target_title}'...")
     create_url = f"{LABEL_STUDIO_URL}/api/projects"
@@ -66,6 +92,16 @@ def ensure_project(headers: dict, project_id: int = None, title: str = None) -> 
     return created_id
 
 
+def clear_project_tasks(headers: dict, project_id: int):
+    """Usuwa wszystkie zadania z projektu (pod kątem re-partycjonowania)."""
+    url = f"{LABEL_STUDIO_URL}/api/projects/{project_id}/tasks/"
+    resp = requests.delete(url, headers=headers)
+    if resp.status_code in (200, 204):
+        print(f"   🗑️  Wyczyszczono wcześniejsze zadania w projekcie ID {project_id}.")
+    else:
+        print(f"   ⚠️  Nie udało się wyczyścić zadań w projekcie {project_id}: {resp.status_code}")
+
+
 def ensure_local_storage(headers: dict, project_id: int):
     """Rejestruje Local Storage w projekcie przez API, jeśli jeszcze nie istnieje."""
     url = f"{LABEL_STUDIO_URL}/api/storages/localfiles?project={project_id}"
@@ -77,7 +113,6 @@ def ensure_local_storage(headers: dict, project_id: int):
         if storage.get("path") == LS_STORAGE_PATH:
             return storage.get("id")
 
-    print(f"Rejestracja Local Storage ({LS_STORAGE_PATH}) w projekcie {project_id}...")
     payload = {
         "project": project_id,
         "path": LS_STORAGE_PATH,
@@ -86,8 +121,7 @@ def ensure_local_storage(headers: dict, project_id: int):
     }
     resp = requests.post(f"{LABEL_STUDIO_URL}/api/storages/localfiles", headers=headers, json=payload)
     resp.raise_for_status()
-    storage_id = resp.json()["id"]
-    return storage_id
+    return resp.json()["id"]
 
 
 def build_tasks_from_labeled(labeled_dir: Path):
@@ -135,69 +169,158 @@ def build_tasks_from_labeled(labeled_dir: Path):
     return tasks_by_session
 
 
+def partition_sessions(tasks_by_session: dict, num_users: int = 2, strategy: str = "interleaved", ratio_str: str = "50:50"):
+    """
+    Dzieli sesje wideo na użytkowników wg wybranej strategii:
+    1. 'interleaved': naprzemienne przydzielanie sesji (zrównoważony podział gestów i odległości).
+    2. 'distance': podział wg odległości od drona (np. User 1: 1.4m + 1.7m, User 2: 2.0m + 1.7m).
+    3. 'gesture': podział wg typów gestów (np. User 1: closehand/openhand/ok/v, User 2: shaka/dislike/left/right).
+    4. 'ratio': podział proporcjonalny według zadanego stosunku (np. 60:40, 70:30).
+    """
+    sorted_sessions = sorted(list(tasks_by_session.keys()))
+    user_sessions = defaultdict(list)
+
+    if strategy == "distance" and num_users == 2:
+        # User 1: bliższe ujęcia (1.4m + połowa 1.7m), User 2: dalsze ujęcia (2.0m + połowa 1.7m)
+        s_14 = [s for s in sorted_sessions if "1_4metra" in s]
+        s_17 = [s for s in sorted_sessions if "1_7metra" in s]
+        s_20 = [s for s in sorted_sessions if "2metry" in s]
+
+        user_sessions[0].extend(s_14)
+        user_sessions[1].extend(s_20)
+
+        for idx, s in enumerate(s_17):
+            u_idx = idx % 2
+            user_sessions[u_idx].append(s)
+
+    elif strategy == "gesture" and num_users == 2:
+        # User 1: 4 gesty (closehand, openhand, ok, v), User 2: 4 gesty (shaka, dislike, left, right)
+        g_group_0 = {"closehand", "openhand", "ok", "v"}
+        for s in sorted_sessions:
+            gest, _ = extract_metadata_from_stem(s)
+            if gest in g_group_0:
+                user_sessions[0].append(s)
+            else:
+                user_sessions[1].append(s)
+
+    elif strategy == "ratio":
+        # Parsowanie proporcji np. "60:40" lub "70:30"
+        try:
+            parts = [float(p.strip()) for p in ratio_str.replace("/", ":").replace(",", ":").split(":")]
+            total_ratio = sum(parts)
+            target_pcts = [p / total_ratio for p in parts]
+        except Exception:
+            target_pcts = [1.0 / num_users] * num_users
+
+        total_frames = sum(len(tasks_by_session[s]) for s in sorted_sessions)
+        target_frames = [int(round(pct * total_frames)) for pct in target_pcts]
+
+        # Greedy packing sesji do osiągnięcia celu
+        current_frames = [0] * num_users
+        for s in sorted(sorted_sessions, key=lambda s: len(tasks_by_session[s]), reverse=True):
+            s_frames = len(tasks_by_session[s])
+            # Wybierz usera, który jest najbardziej poniżej celu
+            def deficit(u):
+                return target_frames[u] - current_frames[u]
+            best_u = max(range(num_users), key=deficit)
+            user_sessions[best_u].append(s)
+            current_frames[best_u] += s_frames
+
+    else:
+        # Domyślny podział naprzemienny (interleaved)
+        for idx, s in enumerate(sorted_sessions):
+            user_sessions[idx % num_users].append(s)
+
+    return user_sessions
+
+
 def import_dataset(
     labeled_dir: Path = LABELED_DIR,
     project_id: int = PROJECT_ID,
-    split_coop: int = 1,
-    coop_names: str = "Michał,Kolega"
+    split_coop: int = None,
+    coop_names: str = None,
+    strategy: str = None,
+    ratio: str = None,
+    reassign: bool = False
 ):
+    # Wczytaj konfigurację z params.yaml
+    params = load_params().get("coop", {})
+    default_names = params.get("names", ["dane michal", "dane janek"])
+    default_strategy = params.get("strategy", "interleaved")
+    default_ratio = params.get("ratio", "50:50")
+
+    if coop_names:
+        names = [n.strip() for n in coop_names.split(",") if n.strip()]
+    elif isinstance(default_names, list):
+        names = default_names
+    else:
+        names = ["dane michal", "dane janek"]
+
+    if split_coop is None:
+        split_coop = len(names)
+
+    if strategy is None:
+        strategy = default_strategy
+    if ratio is None:
+        ratio = default_ratio
+
     headers = get_auth_headers()
     labeled_dir = Path(labeled_dir)
     tasks_by_session = build_tasks_from_labeled(labeled_dir)
-
     total_tasks = sum(len(ts) for ts in tasks_by_session.values())
-    print(f"\nZnaleziono {total_tasks} klatek w {len(tasks_by_session)} unikalnych sesjach wideo.")
+
+    print(f"\n📂 Odnaleziono {total_tasks} klatek w {len(tasks_by_session)} sesjach wideo.")
 
     if split_coop <= 1:
-        # Tryb jednoosobowy (standardowy)
-        p_id = ensure_project(headers, project_id=project_id)
+        # Tryb solo (pojedynczy projekt)
+        p_id = ensure_project(headers, project_id=project_id, title=names[0] if names else None)
         ensure_local_storage(headers, p_id)
+        if reassign:
+            clear_project_tasks(headers, p_id)
 
         all_tasks = [t for ts in tasks_by_session.values() for t in ts]
         _send_tasks_to_project(headers, p_id, all_tasks)
-        print(f"\n✅ Zadania zostały wgrane do projektu {p_id} ({LABEL_STUDIO_URL}/projects/{p_id})")
-    else:
-        # Tryb Co-op: podział na N osób (np. Michał i Kolega)
-        names = [n.strip() for n in coop_names.split(",")][:split_coop]
-        while len(names) < split_coop:
-            names.append(f"Osoba_{len(names)+1}")
+        print(f"\n✅ Zadania zostały wgrane do projektu {p_id} ('{names[0]}').")
+        return
 
-        print(f"\n👥 Aktywowano tryb CO-OP dla {split_coop} osób: {', '.join(names)}")
+    # Tryb Co-op
+    print(f"👥 Tryb CO-OP dla {split_coop} osób:")
+    print(f"   • Projekty         : {', '.join(names)}")
+    print(f"   • Strategia podziału: {strategy.upper()} ({f'proporcja {ratio}' if strategy == 'ratio' else ''})")
+    print(f"   • Wymuszenie czyszczenia (reassign): {'TAK' if reassign else 'NIE (tylko brakujące)'}")
 
-        # Równomierny podział sesji (interleaved)
-        sorted_sessions = sorted(list(tasks_by_session.keys()))
-        user_tasks = defaultdict(list)
-        user_sessions_count = defaultdict(int)
+    user_sessions = partition_sessions(tasks_by_session, num_users=split_coop, strategy=strategy, ratio_str=ratio)
 
-        for s_idx, s_id in enumerate(sorted_sessions):
-            user_idx = s_idx % split_coop
-            user_tasks[user_idx].extend(tasks_by_session[s_id])
-            user_sessions_count[user_idx] += 1
+    created_project_ids = []
+    user_tasks_summary = []
 
-        created_project_ids = []
-        for u_idx, name in enumerate(names):
-            p_title = f"Thesis Drone - {name}"
-            # Dla pierwszego usera próbuj powiązać z PROJECT_ID jeśli to projekt 1
-            cand_p_id = PROJECT_ID if (u_idx == 0 and PROJECT_ID is not None) else None
-            p_id = ensure_project(headers, project_id=cand_p_id, title=p_title)
-            ensure_local_storage(headers, p_id)
-            created_project_ids.append(p_id)
+    for u_idx, name in enumerate(names):
+        cand_p_id = (u_idx + 1) if u_idx < 2 else None
+        p_id = ensure_project(headers, project_id=cand_p_id, title=name)
+        ensure_local_storage(headers, p_id)
+        created_project_ids.append(p_id)
 
-            tasks_for_user = user_tasks[u_idx]
-            print(f"\n👤 [Użytkownik {u_idx+1}: {name}] Wgrywanie {len(tasks_for_user)} zadań ({user_sessions_count[u_idx]} sesji) do projektu ID {p_id}...")
-            _send_tasks_to_project(headers, p_id, tasks_for_user)
+        if reassign:
+            clear_project_tasks(headers, p_id)
 
-        print("\n" + "=" * 70)
-        print("🎉 ZAKOŃCZONO IMPORT CO-OP DO LABEL STUDIO!")
-        print("=" * 70)
-        for u_idx, name in enumerate(names):
-            p_id = created_project_ids[u_idx]
-            print(f"👤 {name:<10} -> Projekt ID: {p_id:<3} | URL: {LABEL_STUDIO_URL}/projects/{p_id} ({len(user_tasks[u_idx])} klatek)")
-        print("-" * 70)
-        print("💡 Aby udostępnić Label Studio koledze przez bezpieczny tunel (bez instalacji):")
-        print("   cloudflared tunnel --url http://localhost:8081")
-        print("   (kolega otwiera wygenerowany link HTTPS w przeglądarce i oznacza swój projekt!)")
-        print("=" * 70 + "\n")
+        sessions = user_sessions[u_idx]
+        tasks = [t for s in sessions for t in tasks_by_session[s]]
+        user_tasks_summary.append((name, p_id, len(sessions), len(tasks), sessions))
+
+        print(f"\n👤 [{name}] Wgrywanie {len(tasks)} klatek ({len(sessions)} sesji) do projektu ID {p_id}...")
+        _send_tasks_to_project(headers, p_id, tasks)
+
+    print("\n" + "=" * 72)
+    print(f"🎉 PODZIAŁ CO-OP ({strategy.upper()}) ZOSTAŁ ZASTOSOWANY W LABEL STUDIO!")
+    print("=" * 72)
+    for name, p_id, n_sess, n_tasks, sessions in user_tasks_summary:
+        sample_s = ", ".join(sessions[:2]) + ("..." if len(sessions) > 2 else "")
+        print(f"📁 Projekt ID: {p_id:<3} | Tytuł: '{name}'")
+        print(f"   • Przypisano klatek: {n_tasks} ({n_sess} sesji: {sample_s})")
+        print(f"   • URL lokalny       : {LABEL_STUDIO_URL}/projects/{p_id}")
+        print("-" * 72)
+    print("💡 Aby uruchomić tunel dla kolegi: make tunnel")
+    print("======================================================================\n")
 
 
 def _send_tasks_to_project(headers: dict, project_id: int, tasks: list):
@@ -217,20 +340,33 @@ def _send_tasks_to_project(headers: dict, project_id: int, tasks: list):
     import_url = f"{LABEL_STUDIO_URL}/api/projects/{project_id}/import"
     resp = requests.post(import_url, headers=headers, json=new_tasks)
     resp.raise_for_status()
-    print(f"   ✅ Projekt {project_id}: Pomyślnie zaimportowano {len(new_tasks)} nowych zadań.")
+    print(f"   ✅ Projekt {project_id}: Zaimportowano {len(new_tasks)} nowych zadań.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Import oznaczonych klatek do Label Studio (tryb solo lub co-op)")
+    parser = argparse.ArgumentParser(description="Import oznaczonych klatek do Label Studio z konfigurowalnym podziałem Co-op")
     parser.add_argument("--labeled-dir", type=str, default=str(LABELED_DIR), help="Katalog z oznaczonymi obrazami")
     parser.add_argument("--project-id", type=int, default=PROJECT_ID, help="Domyślne ID projektu")
-    parser.add_argument("--split-coop", type=int, default=1, help="Liczba osób do podziału zadań (np. 2)")
-    parser.add_argument("--coop-names", type=str, default="Michał,Kolega", help="Imiona/nazwy osób do projektów, oddzielone przecinkiem")
+    parser.add_argument("--split-coop", type=int, default=None, help="Liczba osób do podziału (domyślnie 2)")
+    parser.add_argument("--coop-names", type=str, default=None, help="Nazwy projektów oddzielone przecinkiem, np. 'dane michal,dane janek'")
+    parser.add_argument(
+        "--strategy",
+        type=str,
+        choices=["interleaved", "distance", "gesture", "ratio"],
+        default=None,
+        help="Strategia podziału zadań: interleaved (naprzemiennie), distance (wg odległości), gesture (wg gestów), ratio (wg proporcji)"
+    )
+    parser.add_argument("--ratio", type=str, default=None, help="Stosunek podziału dla strategii ratio, np. '50:50', '60:40'")
+    parser.add_argument("--reassign", action="store_true", help="Wyczyść istniejące zadania w projektach przed nowym podziałem")
+
     args = parser.parse_args()
 
     import_dataset(
         labeled_dir=Path(args.labeled_dir),
         project_id=args.project_id,
         split_coop=args.split_coop,
-        coop_names=args.coop_names
+        coop_names=args.coop_names,
+        strategy=args.strategy,
+        ratio=args.ratio,
+        reassign=args.reassign
     )
