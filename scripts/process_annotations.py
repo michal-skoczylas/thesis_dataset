@@ -16,25 +16,15 @@ from config import (
 )
 
 
-def export_annotations_from_ls(project_id: int = PROJECT_ID, output_file: Path = None) -> list:
+def export_annotations_from_ls(project_id: int = None, output_file: Path = None) -> list:
     """Pobiera zatwierdzone przez człowieka adnotacje z Label Studio API i zapisuje do JSON."""
+    from prepare_yolo_dataset import fetch_submitted_tasks_from_ls
     if output_file is None:
         output_file = ANNOTATIONS_DIR / "dataset.json"
 
-    output_file.parent.mkdir(parents=True, exist_ok=True)
-    headers = get_auth_headers()
-
-    print(f"Pobieranie zatwierdzonych zadań z Label Studio (Projekt {project_id})...")
-    url = f"{LABEL_STUDIO_URL}/api/projects/{project_id}/export?exportType=JSON"
-    r = requests.get(url, headers=headers)
-    r.raise_for_status()
-
-    tasks = r.json()
-    print(f"Znaleziono {len(tasks)} oznaczonych zadań.")
-
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(tasks, f, indent=2, ensure_ascii=False)
-    print(f"Zapisano metadane adnotacji do pliku: {output_file}")
+    pids = [project_id] if project_id else None
+    tasks = fetch_submitted_tasks_from_ls(project_ids=pids, save_to=output_file)
+    print(f"Zapisano metadane adnotacji ({len(tasks)} zadań) do: {output_file}")
     return tasks
 
 
@@ -178,7 +168,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Eksport adnotacji z Label Studio i wycinanie dłoni (cropy)")
     parser.add_argument("--export-only", action="store_true", help="Tylko eksport do JSON z Label Studio")
     parser.add_argument("--crop-only", action="store_true", help="Tylko wycinanie cropów z zapisanego dataset.json")
-    parser.add_argument("--project-id", type=int, default=PROJECT_ID, help="ID projektu Label Studio")
+    parser.add_argument("--project-id", type=int, default=None, help="ID projektu Label Studio (domyślnie: wszystkie projekty coop)")
     parser.add_argument("--json-file", type=str, default=str(ANNOTATIONS_DIR / "dataset.json"), help="Ścieżka do dataset.json")
     parser.add_argument("--output-dir", type=str, default=str(PROCESSED_DIR), help="Katalog wyjściowy cropów")
     parser.add_argument("--images-dir", type=str, default=None, help="Opcjonalny katalog źródeł obrazów (np. data/raw_upscaled)")

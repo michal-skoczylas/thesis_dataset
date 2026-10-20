@@ -139,3 +139,9 @@ prepare-yolo-zip:
 
 train-yolo:
 	python3 scripts/train_yolo.py $(if $(MODEL),--model $(MODEL),) $(if $(EPOCHS),--epochs $(EPOCHS),) $(if $(BATCH),--batch $(BATCH),) $(if $(DEVICE),--device $(DEVICE),)
+
+verify:
+	python3 scripts/verify_dataset.py
+
+tensorboard:
+	tensorboard --logdir runs/gesture_cnn

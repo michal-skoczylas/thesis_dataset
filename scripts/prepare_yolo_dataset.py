@@ -501,10 +501,10 @@ def prepare_dataset(
     write_yolo_split(train_items, "train")
     write_yolo_split(val_items, "val")
 
-    data_yaml_content = """# Thesis Hand Detection Dataset (Stage 1)
+    data_yaml_content = f"""# Thesis Hand Detection Dataset (Stage 1)
 # Źródło: Label Studio (tylko zatwierdzone zadania Submit)
 
-path: .
+path: {yolo_dir.resolve()}
 train: images/train
 val: images/val
 

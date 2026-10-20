@@ -43,3 +43,4 @@ keys/*
 logs/*
 *.zip
 *.log
+*.pt

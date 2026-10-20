@@ -20,3 +20,23 @@ coop:
   names: ["dane michal", "dane janek"]
   strategy: "interleaved"   # Opcje: "interleaved" (naprzemiennie), "distance" (wg odleglosci), "gesture" (wg gestow), "ratio" (proporcjonalnie)
   ratio: "50:50"            # Proporcja np. "50:50", "60:40", "70:30"
+
+train_yolo:
+  model: "yolo26n.pt"
+  epochs: 100
+  batch_size: 16
+  imgsz: 320               # Natywna rozdzielczość klatek z drona (320x320)
+  patience: 25
+  lr0: 0.01
+  # Augmentacje pod specyfikę widoku z drona (lot, wiatr, kąt kamery, światło):
+  augment:
+    degrees: 15.0          # Losowe przechyły drona (+/- 15 stopni)
+    scale: 0.5             # Losowe przybliżanie/oddalanie dłoni (+/- 50%)
+    shear: 2.0             # Ścinanie perspektywiczne
+    perspective: 0.0005    # Kąt patrzenia kamery z góry
+    fliplr: 0.5            # Odbicie lustrzane lewo-prawo (dla YOLO to po prostu dłoń)
+    flipud: 0.0            # Bez obracania do góry nogami
+    mosaic: 1.0            # Mozaika 4 klatek (kluczowa dla małych obiektów)
+    mixup: 0.1             # Mieszanie klatek
+    hsv_v: 0.4             # Zmiany oświetlenia/jasności (słońce/cień)
+    hsv_s: 0.7             # Zmiany nasycenia kolorów
