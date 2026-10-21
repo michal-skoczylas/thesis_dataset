@@ -1,4 +1,4 @@
-.PHONY: help setup ls-up ls-down ls-logs pull push sample sample-dry-run to-gray to-gray-inplace detect detect-upscaled import-ls export-ls crop crop-upscaled upscale upscale-benchmark pipeline-standard pipeline-upscaled pipeline-all pipeline status
+.PHONY: help setup ls-up ls-down ls-logs pull push sample sample-dry-run to-gray to-gray-inplace detect detect-upscaled import-ls export-ls crop crop-upscaled upscale upscale-benchmark pipeline-standard pipeline-upscaled pipeline-all pipeline status export-colab export-colab-cnn export-colab-yolo export-colab-all
 
 help:
 	@echo "======================================================================"
@@ -46,6 +46,11 @@ help:
 	@echo "  make prepare-yolo       - Przygotowuje dane z Label Studio pod YOLO i Custom CNN"
 	@echo "  make prepare-yolo-zip   - Pakuje yolo_dataset.zip oraz cnn_dataset.zip (pod Colab)"
 	@echo "  make train-yolo         - Rozpoczyna trening YOLO Nano (auto: CUDA/MPS/CPU)"
+	@echo ""
+	@echo "Eksport pod chmure (Google Colab):"
+	@echo "  make export-colab       - Pakuje wszystko pod Custom CNN (dataset, src, modele, loadery)"
+	@echo "  make export-colab-yolo  - Pakuje pod YOLO (dataset YOLO + notatnik)"
+	@echo "  make export-colab-all   - Pakuje pelen pakiet (CNN + YOLO + caly kod)"
 	@echo "======================================================================"
 
 setup:
@@ -145,3 +150,17 @@ verify:
 
 tensorboard:
 	tensorboard --logdir runs/gesture_cnn
+
+# --- Eksport pod Google Colab ---
+export-colab:
+	python3 scripts/export_colab.py --target $(if $(TARGET),$(TARGET),cnn) $(if $(OUT),--output $(OUT),)
+
+export-colab-cnn:
+	python3 scripts/export_colab.py --target cnn $(if $(OUT),--output $(OUT),)
+
+export-colab-yolo:
+	python3 scripts/export_colab.py --target yolo $(if $(OUT),--output $(OUT),)
+
+export-colab-all:
+	python3 scripts/export_colab.py --target all $(if $(OUT),--output $(OUT),)
+
