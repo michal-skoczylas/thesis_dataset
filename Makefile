@@ -151,6 +151,13 @@ verify:
 tensorboard:
 	tensorboard --logdir runs/gesture_cnn
 
+# --- Trening PyTorch Lightning (Etap 2: Klasyfikator gestów) ---
+train-lightning:
+	python3 scripts/train_lightning.py $(if $(MODEL),--model $(MODEL),) $(if $(EPOCHS),--epochs $(EPOCHS),) $(if $(BATCH),--batch-size $(BATCH),) $(if $(LR),--lr $(LR),) $(if $(PATIENCE),--patience $(PATIENCE),) $(if $(NAME),--name $(NAME),) $(if $(EXPORT),--export,) $(if $(EVAL),--eval,)
+
+tensorboard-lightning:
+	tensorboard --logdir runs/lightning
+
 # --- Eksport pod Google Colab ---
 export-colab:
 	python3 scripts/export_colab.py --target $(if $(TARGET),$(TARGET),cnn) $(if $(OUT),--output $(OUT),)

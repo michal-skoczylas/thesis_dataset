@@ -16,3 +16,5 @@ ultralytics>=8.3.0
 # autodistill>=0.1.28
 # autodistill-grounding-dino>=0.1.7
 # transformers==4.38.2
+# pytorch-lightning>=2.1.0
+# torchmetrics>=1.0.0
