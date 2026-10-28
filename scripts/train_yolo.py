@@ -218,9 +218,24 @@ def train_yolo(
         print(f"   • Precyzja (P)  : {precision:.4f}")
         print(f"   • Czułość (R)   : {recall:.4f}")
     except Exception as e:
-        print(f"   (Szczegółowe metryki zapisane w katalogu eksperymentu: {project_dir / run_name})")
+        print(f"   (Szczegółowe metryki zapisane w katalogu: {project_dir / run_name})")
+
+    # Generowanie wykresów i wizualizacji predykcji
+    try:
+        from visualize_yolo_results import plot_training_curves, visualize_validation_predictions
+        csv_file = project_dir / run_name / "results.csv"
+        curves_out = project_dir / run_name / "thesis_training_metrics.png"
+        grid_out = project_dir / run_name / "val_predictions_preview.jpg"
+        val_imgs = data_yaml.parent / "images" / "val"
+        val_lbls = data_yaml.parent / "labels" / "val"
+        plot_training_curves(csv_file, curves_out)
+        w_to_use = target_weights if (save_best_to_weights and target_weights.exists()) else best_weights_path
+        visualize_validation_predictions(w_to_use, val_imgs, val_lbls, grid_out)
+    except Exception as e:
+        print(f"⚠️  Nie udało się wygenerować dodatkowych wizualizacji: {e}")
 
     return results
+
 
 
 if __name__ == "__main__":
