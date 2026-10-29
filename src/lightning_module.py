@@ -84,6 +84,7 @@ class GestureLightningModule(pl.LightningModule):
         t_max: Optional[int] = None,
         eta_min: Optional[float] = None,
         class_names: Optional[List[str]] = None,
+        class_weights: Optional[Any] = None,
         **model_kwargs: Any,
     ):
         super().__init__()
@@ -100,12 +101,17 @@ class GestureLightningModule(pl.LightningModule):
         self.eta_min = eta_min if eta_min is not None else (lr * 0.1)
         self.class_names = class_names or []
 
+        # Obsługa opcjonalnych wag klas przy niezbalansowanym zbiorze
+        if class_weights is not None:
+            weights_tensor = class_weights.float() if isinstance(class_weights, torch.Tensor) else torch.tensor(class_weights, dtype=torch.float32)
+            self.register_buffer("class_weights", weights_tensor)
+            self.criterion = nn.CrossEntropyLoss(weight=self.class_weights, label_smoothing=self.label_smoothing)
+        else:
+            self.criterion = nn.CrossEntropyLoss(label_smoothing=self.label_smoothing)
+
         # Inicjalizacja sieci bazowej
         self.model = build_model(model, num_classes=num_classes, **model_kwargs)
         self.model_name = self.model.__class__.__name__
-
-        # Funkcja straty z wygładzaniem etykiet (label smoothing)
-        self.criterion = nn.CrossEntropyLoss(label_smoothing=self.label_smoothing)
 
         # Metryki TorchMetrics (zoptymalizowane pod Lightning)
         self.train_acc = torchmetrics.Accuracy(task="multiclass", num_classes=num_classes)
