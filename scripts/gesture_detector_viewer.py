@@ -297,13 +297,16 @@ class GestureDetectorViewer:
         parser.add_argument("--yolo-weights", type=str, default=None, help="Ścieżka do wag YOLO (opcjonalna)")
         parser.add_argument("--classifier-binary", type=str, default=None, help="Ścieżka do wag ResNet Binary")
         parser.add_argument("--classifier-all", type=str, default=None, help="Ścieżka do wag ResNet All-8")
+        parser.add_argument("--demo", action="store_true", help="Tryb demo bez podłączonego drona (odtwarza klatki z drona)")
+        parser.add_argument("--source", type=str, default="aideck", help="Źródło obrazu: 'aideck' (dron), 'demo' (zbiór drona), 'webcam' (kamera Maca), lub ścieżka do pliku wideo")
 
         self.args = parser.parse_args()
 
         # Automatyczne odnajdywanie wag modeli w strukturze projektu
         base_dir = Path(__file__).resolve().parent
         thesis_dir = base_dir.parents[4] if len(base_dir.parents) >= 5 else base_dir
-        dane_weights = thesis_dir / "dane" / "weights"
+        self.dane_weights = thesis_dir / "dane" / "weights"
+        dane_weights = self.dane_weights
 
         yolo_candidates = [
             Path(self.args.yolo_weights) if self.args.yolo_weights else None,
@@ -340,10 +343,14 @@ class GestureDetectorViewer:
             smooth_frames=self.args.smooth,
         )
 
-        # Klient AI-deck streamer
-        self.client = StreamerClient(
-            host=self.args.host, port=self.args.port, udp_send=self.args.udp_send
-        )
+        # Klient AI-deck streamer (tylko w trybie aideck)
+        self.is_demo = self.args.demo or self.args.source in ("demo", "dataset", "webcam", "0") or Path(self.args.source).exists()
+        if not self.is_demo:
+            self.client = StreamerClient(
+                host=self.args.host, port=self.args.port, udp_send=self.args.udp_send
+            )
+        else:
+            self.client = None
 
         self.frame_saver = None
         if self.args.save is not None:
@@ -379,8 +386,38 @@ class GestureDetectorViewer:
             if self.frame_saver:
                 self.frame_saver.open()
 
-            for frame, tof_frame, metadata in self.client.receive():
-                self.client.send_reply(metadata, None)
+            def frame_generator():
+                if not self.is_demo:
+                    for f, t, m in self.client.receive():
+                        self.client.send_reply(m, None)
+                        yield f, t, m
+                elif self.args.source in ("webcam", "0"):
+                    cap = cv2.VideoCapture(0)
+                    while cap.isOpened():
+                        ret, f = cap.read()
+                        if not ret: break
+                        yield f, None, None
+                    cap.release()
+                else:
+                    # Odtwarzaj klatki ze zbioru drona lub pliku
+                    val_dir = self.dane_weights.parent / "data" / "yolo_dataset" / "images" / "val"
+                    img_files = sorted(list(val_dir.glob("*.jpg"))) if val_dir.exists() else []
+                    if not img_files and Path(self.args.source).exists():
+                        cap = cv2.VideoCapture(self.args.source)
+                        while cap.isOpened():
+                            ret, f = cap.read()
+                            if not ret: break
+                            yield f, None, None
+                        cap.release()
+                        return
+                    print(f"🎬 [Tryb Demo] Odtwarzanie {len(img_files)} klatek z kamery drona...")
+                    while True:
+                        for p in img_files:
+                            img = cv2.imread(str(p))
+                            time.sleep(0.04) # ~25 FPS
+                            yield img, None, None
+
+            for frame, tof_frame, metadata in frame_generator():
 
                 # Konwersja surowej klatki do obrazu 3-kanałowego BGR
                 if len(frame.shape) == 2 or frame.shape[2] == 1:
@@ -417,7 +454,8 @@ class GestureDetectorViewer:
                 self.frame_saver.close()
             if self.viewer_type == "cv2":
                 cv2.destroyAllWindows()
-            self.client.shutdown()
+            if self.client:
+                self.client.shutdown()
 
     def draw_annotations(
         self,

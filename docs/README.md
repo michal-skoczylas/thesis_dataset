@@ -18,6 +18,9 @@ Kompletny zestaw dokumentacji technicznej i operacyjnej dla systemu automatyzacj
 4. [**Trening Modeli (Lokalnie CUDA/MPS oraz Google Colab)**](file:///Users/michalskoczylas/Documents/studia/thesis/dane/docs/training_and_colab.md)
    - Instrukcja uruchamiania treningu detektora YOLO Nano (lokalny PC z NVIDIA RTX, Mac z Apple Silicon lub darmowy GPU T4 w Google Colab) oraz klasyfikatora CNN.
 
+5. [**AI-Deck Real-Time Gesture & Hand Detector (`gesture_detector_viewer.py`)**](file:///Users/michalskoczylas/Documents/studia/thesis/dane/docs/gesture_detector_viewer.md)
+   - Przewodnik po potoku detekcji i klasyfikacji w czasie rzeczywistym z drona: architektura dwustopniowa (YOLO + ResNet), tryb binarny vs 8 gestów, przełączanie w locie klawiszem `m`, tryb demo/webcam oraz opis flag CLI.
+
 ---
 
 ## 🧠 Szybka Ściągawka Komend (Cheat Sheet)
@@ -33,5 +36,8 @@ Kompletny zestaw dokumentacji technicznej i operacyjnej dla systemu automatyzacj
 | **Podział i wgranie do LS (Co-op 50/50)** | `make import-ls-coop` |
 | **Budowa datasetu YOLO & CNN (z Submit)** | `make prepare-yolo-zip` |
 | **Trening YOLO lokalnie** | `make train-yolo` |
+| **Podgląd na żywo z drona (Open/Close)** | `python scripts/gesture_detector_viewer.py --mode binary` |
+| **Podgląd na żywo z drona (8 gestów)** | `python scripts/gesture_detector_viewer.py --mode all` |
+| **Test podglądu bez drona (Tryb Demo)** | `python scripts/gesture_detector_viewer.py --demo` |
 | **Wysłanie danych do Google Drive (DVC)** | `make push` |
 | **Pobranie danych na nowej maszynie** | `make pull` |
