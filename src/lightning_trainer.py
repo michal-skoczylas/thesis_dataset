@@ -3,12 +3,52 @@ from typing import Optional, Union, Tuple, Any, List
 import copy
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 import torch
 import torch.nn as nn
 
 from .lightning_data import GestureDataModule
 from .lightning_module import GestureLightningModule
+
+
+class MetricsHistoryCallback(pl.Callback):
+    """
+    Callback rejestrujący historię metryk (train/val loss/acc, lr) na koniec każdej epoki.
+    Zapewnia niezawodny dostęp do historii uczenia bez względu na format logera.
+    """
+    def __init__(self):
+        super().__init__()
+        self.history = {
+            "epoch": [],
+            "train_loss": [],
+            "train_acc": [],
+            "val_loss": [],
+            "val_acc": [],
+            "lr": [],
+        }
+
+    def on_validation_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+        if trainer.sanity_checking:
+            return
+
+        metrics = trainer.callback_metrics
+        ep = trainer.current_epoch
+
+        t_loss = metrics.get("train_loss")
+        t_acc = metrics.get("train_acc")
+        v_loss = metrics.get("val_loss")
+        v_acc = metrics.get("val_acc")
+
+        self.history["epoch"].append(ep)
+        self.history["train_loss"].append(t_loss.item() if t_loss is not None else (self.history["train_loss"][-1] if self.history["train_loss"] else None))
+        self.history["train_acc"].append(t_acc.item() if t_acc is not None else (self.history["train_acc"][-1] if self.history["train_acc"] else None))
+        self.history["val_loss"].append(v_loss.item() if v_loss is not None else None)
+        self.history["val_acc"].append(v_acc.item() if v_acc is not None else None)
+
+        current_lr = 0.0
+        if trainer.optimizers:
+            current_lr = trainer.optimizers[0].param_groups[0].get("lr", 0.0)
+        self.history["lr"].append(current_lr)
 
 
 class SaveBestTorchWeightsCallback(pl.Callback):
@@ -55,9 +95,10 @@ def create_lightning_trainer(
 ) -> pl.Trainer:
     """
     Tworzy skonfigurowaną instancję pl.Trainer z:
-    - Logerem TensorBoard (runs/lightning/<experiment_name>)
+    - Logerami TensorBoard i CSV
     - ModelCheckpoint (zapisuje najlepszy pełny checkpoint .ckpt według val_acc)
     - SaveBestTorchWeightsCallback (zapisuje weights/<experiment_name>_best.pt dla kompatybilności)
+    - MetricsHistoryCallback (przechowuje historię uczenia per epoka)
     - LearningRateMonitor
     - Opcjonalnym EarlyStopping
     - Automatycznym wykrywaniem akceleratora (MPS / CUDA / CPU)
@@ -65,11 +106,15 @@ def create_lightning_trainer(
     save_path = Path(save_dir)
     save_path.mkdir(parents=True, exist_ok=True)
 
-    # 1. Logger TensorBoard
+    # 1. Logery
     tb_logger = TensorBoardLogger(
         save_dir=log_dir,
         name=experiment_name,
         default_hp_metric=False,
+    )
+    csv_logger = CSVLogger(
+        save_dir=log_dir,
+        name=experiment_name,
     )
 
     # 2. Checkpointing
@@ -86,10 +131,11 @@ def create_lightning_trainer(
     raw_weights_path = save_path / f"{experiment_name}_best.pt"
     raw_weights_callback = SaveBestTorchWeightsCallback(save_path=raw_weights_path, monitor="val_acc")
 
-    # 4. Monitor LR
+    # 4. Monitor LR i Historia
     lr_monitor = LearningRateMonitor(logging_interval="epoch")
+    history_callback = MetricsHistoryCallback()
 
-    callbacks: List[pl.Callback] = [checkpoint_callback, raw_weights_callback, lr_monitor]
+    callbacks: List[pl.Callback] = [checkpoint_callback, raw_weights_callback, lr_monitor, history_callback]
 
     # 5. Opcjonalne wczesne zatrzymanie (Early Stopping)
     if early_stopping_patience is not None and early_stopping_patience > 0:
@@ -106,7 +152,7 @@ def create_lightning_trainer(
         accelerator=accelerator,
         devices=devices,
         precision=precision,
-        logger=tb_logger,
+        logger=[tb_logger, csv_logger],
         callbacks=callbacks,
         enable_progress_bar=enable_progress_bar,
         log_every_n_steps=trainer_kwargs.pop("log_every_n_steps", 10),

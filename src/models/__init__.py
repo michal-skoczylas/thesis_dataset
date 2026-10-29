@@ -6,7 +6,7 @@ from .custom_cnn import (
     GestureCNN_Residual,
     ResidualBlock,
 )
-from .baselines import MobileNetV3Baseline, ResNet18Baseline
+from .baselines import MobileNetV3Baseline, ResNet18Baseline, ResNet34Baseline
 
 __all__ = [
     "print_model_summary",
@@ -17,4 +17,6 @@ __all__ = [
     "ResidualBlock",
     "MobileNetV3Baseline",
     "ResNet18Baseline",
+    "ResNet34Baseline",
 ]
+

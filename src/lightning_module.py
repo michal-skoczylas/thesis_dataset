@@ -13,6 +13,7 @@ from .models import (
     GestureCNN_Residual,
     MobileNetV3Baseline,
     ResNet18Baseline,
+    ResNet34Baseline,
 )
 
 # Rejestr modeli do szybkiego wywoływania po nazwie
@@ -32,6 +33,8 @@ MODEL_REGISTRY = {
     "mobilenetv3baseline": MobileNetV3Baseline,
     "resnet18": ResNet18Baseline,
     "resnet18baseline": ResNet18Baseline,
+    "resnet34": ResNet34Baseline,
+    "resnet34baseline": ResNet34Baseline,
 }
 
 

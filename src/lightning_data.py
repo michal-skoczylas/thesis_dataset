@@ -8,6 +8,24 @@ from torchvision import datasets, transforms
 from .dataset import find_dataset_dir, get_device
 
 
+class FilteredImageFolder(datasets.ImageFolder):
+    """ImageFolder z opcjonalnym filtrowaniem konkretnych podzbiorów klas (np. tylko closehand i openhand)."""
+    def __init__(self, root: str, transform=None, allowed_classes: Optional[List[str]] = None):
+        super().__init__(root, transform=transform)
+        if allowed_classes is not None:
+            new_classes = sorted([c for c in allowed_classes if c in self.class_to_idx])
+            new_class_to_idx = {c: i for i, c in enumerate(new_classes)}
+            new_samples = [
+                (p, new_class_to_idx[self.classes[t]])
+                for p, t in self.samples
+                if self.classes[t] in new_class_to_idx
+            ]
+            self.classes = new_classes
+            self.class_to_idx = new_class_to_idx
+            self.samples = new_samples
+            self.targets = [s[1] for s in new_samples]
+
+
 class GestureDataModule(pl.LightningDataModule):
     """
     LightningDataModule dla zbioru gestów dłoni z widoku drona.
@@ -17,6 +35,7 @@ class GestureDataModule(pl.LightningDataModule):
     - Aplikuje augmentacje specyficzne dla pracy drona (rotacja, przesunięcie, jitter światła)
     - Pomiata RandomHorizontalFlip (kluczowe, by odróżniać gesty 'left' i 'right')
     - Konfiguruje DataLoadery dla train, val i test
+    - Opcjonalnie filtruje wybrane klasy (np. ['closehand', 'openhand'])
     """
 
     def __init__(
@@ -26,12 +45,14 @@ class GestureDataModule(pl.LightningDataModule):
         batch_size: int = 32,
         num_workers: int = 2,
         pin_memory: Optional[bool] = None,
+        allowed_classes: Optional[List[str]] = None,
     ):
         super().__init__()
         self.data_dir = data_dir
         self.img_size = img_size
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.allowed_classes = allowed_classes
 
         if pin_memory is None:
             dev = get_device()
@@ -68,13 +89,16 @@ class GestureDataModule(pl.LightningDataModule):
         val_path = data_path / "val"
         test_path = data_path / "test"
 
+        folder_cls = FilteredImageFolder if self.allowed_classes else datasets.ImageFolder
+        folder_kwargs = {"allowed_classes": self.allowed_classes} if self.allowed_classes else {}
+
         if stage in (None, "fit", "validate"):
             if train_path.exists():
-                self.train_dataset = datasets.ImageFolder(str(train_path), transform=self.train_transform)
+                self.train_dataset = folder_cls(str(train_path), transform=self.train_transform, **folder_kwargs)
                 self.class_names = self.train_dataset.classes
                 self.num_classes = len(self.class_names)
             if val_path.exists():
-                self.val_dataset = datasets.ImageFolder(str(val_path), transform=self.val_transform)
+                self.val_dataset = folder_cls(str(val_path), transform=self.val_transform, **folder_kwargs)
                 if not self.class_names:
                     self.class_names = self.val_dataset.classes
                     self.num_classes = len(self.class_names)
@@ -83,7 +107,7 @@ class GestureDataModule(pl.LightningDataModule):
             # Jeśli istnieje dedykowany folder test/, użyj go; w przeciwnym razie użyj val/
             target_test = test_path if test_path.exists() else val_path
             if target_test.exists():
-                self.test_dataset = datasets.ImageFolder(str(target_test), transform=self.val_transform)
+                self.test_dataset = folder_cls(str(target_test), transform=self.val_transform, **folder_kwargs)
                 if not self.class_names:
                     self.class_names = self.test_dataset.classes
                     self.num_classes = len(self.class_names)

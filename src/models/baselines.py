@@ -21,13 +21,39 @@ class MobileNetV3Baseline(nn.Module):
 
 
 class ResNet18Baseline(nn.Module):
-    """ResNet-18 z pretrenowanymi wagami ImageNet jako drugi baseline."""
-    def __init__(self, num_classes: int = 8, pretrained: bool = True):
+    """ResNet-18 z pretrenowanymi wagami ImageNet jako baseline / model do transfer learningu."""
+    def __init__(self, num_classes: int = 8, pretrained: bool = True, dropout: float = 0.0):
         super().__init__()
         weights = models.ResNet18_Weights.DEFAULT if pretrained else None
         self.backbone = models.resnet18(weights=weights)
         in_features = self.backbone.fc.in_features
-        self.backbone.fc = nn.Linear(in_features, num_classes)
+        if dropout > 0.0:
+            self.backbone.fc = nn.Sequential(
+                nn.Dropout(p=dropout),
+                nn.Linear(in_features, num_classes),
+            )
+        else:
+            self.backbone.fc = nn.Linear(in_features, num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.backbone(x)
+
+
+class ResNet34Baseline(nn.Module):
+    """ResNet-34 z pretrenowanymi wagami ImageNet do głębszego transfer learningu."""
+    def __init__(self, num_classes: int = 8, pretrained: bool = True, dropout: float = 0.0):
+        super().__init__()
+        weights = models.ResNet34_Weights.DEFAULT if pretrained else None
+        self.backbone = models.resnet34(weights=weights)
+        in_features = self.backbone.fc.in_features
+        if dropout > 0.0:
+            self.backbone.fc = nn.Sequential(
+                nn.Dropout(p=dropout),
+                nn.Linear(in_features, num_classes),
+            )
+        else:
+            self.backbone.fc = nn.Linear(in_features, num_classes)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.backbone(x)
+

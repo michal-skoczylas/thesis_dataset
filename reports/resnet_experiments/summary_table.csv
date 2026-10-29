@@ -1,0 +1,6 @@
+Eksperyment,Model,Tryb,Rozdzielczość,Val Acc (%),Macro F1 (%),CloseHand F1 (%),OpenHand F1 (%),ROC AUC,Czas (s),Parametry
+v1_resnet18_binary_base64,resnet18,Binary (Close/Open),64x64,97.25%,97.25%,97.35%,97.14%,0.9906,53.6,"11,177,538"
+v2_resnet18_binary_hires_drop,resnet18,Binary (Close/Open),112x112,97.80%,97.80%,97.87%,97.73%,0.9949,63.2,"11,177,538"
+v3_resnet18_binary_hires_warmup,resnet18,Binary (Close/Open),112x112,96.70%,96.70%,96.81%,96.59%,0.9875,75.1,"11,177,538"
+v4_resnet34_binary_hires,resnet34,Binary (Close/Open),112x112,97.80%,97.80%,97.87%,97.73%,0.9874,100.3,"21,285,698"
+v5_resnet18_multiclass_all8,resnet18,Multiclass (8),112x112,87.54%,83.68%,93.19%,92.66%,N/A,132.3,"11,180,616"
